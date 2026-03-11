@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -19,8 +19,8 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { initialCampaigns, Campaign } from "@/lib/campaignData";
-import { getContactsByCampaignId, ContactStatus, Contact } from "@/lib/contactData";
+import { fetchCampaigns, updateCampaignName, Campaign } from "@/lib/campaignData";
+import { fetchContactsByCampaignId, insertContact, deleteContact, ContactStatus, Contact } from "@/lib/contactData";
 import StatusBadge from "@/components/StatusBadge";
 
 const PAGE_SIZE = 8;
@@ -107,16 +107,24 @@ export default function CampaignDetailPage() {
   const params = useParams();
   const id = Number(params.id);
 
-  const baseCampaign = initialCampaigns.find((c) => c.id === id);
-
-  const [campaign, setCampaign] = useState<Campaign | undefined>(baseCampaign);
-  const [contacts, setContacts] = useState<Contact[]>(() => getContactsByCampaignId(id));
+  const [campaign, setCampaign] = useState<Campaign | undefined>(undefined);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [loadingPage, setLoadingPage] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
+  useEffect(() => {
+    Promise.all([fetchCampaigns(), fetchContactsByCampaignId(id)])
+      .then(([camps, ctcts]) => {
+        setCampaign(camps.find((c) => c.id === id));
+        setContacts(ctcts);
+      })
+      .finally(() => setLoadingPage(false));
+  }, [id]);
+
   // Edit campaign modal
   const [showEdit, setShowEdit] = useState(false);
-  const [editName, setEditName] = useState(campaign?.name ?? "");
+  const [editName, setEditName] = useState("");
 
   // Add contact modal
   const [showAdd, setShowAdd] = useState(false);
@@ -125,6 +133,14 @@ export default function CampaignDetailPage() {
 
   // Delete contact confirmation
   const [deleteContactId, setDeleteContactId] = useState<number | null>(null);
+
+  if (loadingPage) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (!campaign) {
     return (
@@ -165,17 +181,17 @@ export default function CampaignDetailPage() {
     setCurrentPage(1);
   }
 
-  function handleSaveEdit() {
+  async function handleSaveEdit() {
     if (editName.trim() && campaign) {
       setCampaign({ ...campaign, name: editName.trim() });
+      try { await updateCampaignName(campaign.id, editName.trim()); } catch { /* UI already updated */ }
     }
     setShowEdit(false);
   }
 
-  function handleAddContact() {
+  async function handleAddContact() {
     if (!addName.trim() || !addPhone.trim()) return;
-    const newContact: Contact = {
-      id: Date.now(),
+    const draft: Omit<Contact, "id"> = {
       campaignId: id,
       name: addName.trim(),
       phone: addPhone.trim(),
@@ -184,15 +200,21 @@ export default function CampaignDetailPage() {
       callDuration: "-",
       status: "Unreached",
     };
-    setContacts((prev) => [newContact, ...prev]);
+    try {
+      const saved = await insertContact(draft);
+      setContacts((prev) => [saved, ...prev]);
+    } catch {
+      setContacts((prev) => [{ ...draft, id: Date.now() }, ...prev]);
+    }
     setAddName("");
     setAddPhone("");
     setShowAdd(false);
   }
 
-  function handleDeleteContact(contactId: number) {
+  async function handleDeleteContact(contactId: number) {
     setContacts((prev) => prev.filter((c) => c.id !== contactId));
     setDeleteContactId(null);
+    try { await deleteContact(contactId); } catch { /* UI already updated */ }
   }
 
   return (

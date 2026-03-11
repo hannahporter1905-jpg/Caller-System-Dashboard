@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useNotifications } from "@/lib/notificationsContext";
 import { Search, Plus, X } from "lucide-react";
 import {
@@ -40,14 +40,21 @@ import CampaignsTable from "@/components/CampaignsTable";
 import NewCampaignModal from "@/components/NewCampaignModal";
 import AddGroupModal from "@/components/AddGroupModal";
 import Pagination from "@/components/Pagination";
-import { initialCampaigns, Campaign, Group } from "@/lib/campaignData";
+import { fetchCampaigns, insertCampaign, deleteCampaign, Campaign, Group } from "@/lib/campaignData";
 
 const BUILTIN_GROUPS: Group[] = ["Canada", "RND", "Reactivation", "Archived"];
 const PAGE_SIZE = 5;
 
 export default function CampaignsPage() {
   const { addNotification } = useNotifications();
-  const [campaigns, setCampaigns] = useState<Campaign[]>(initialCampaigns);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchCampaigns()
+      .then(setCampaigns)
+      .finally(() => setLoading(false));
+  }, []);
   const [customGroups, setCustomGroups] = useState<Group[]>([]);
   const [activeTab, setActiveTab] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState("");
@@ -115,13 +122,19 @@ export default function CampaignsPage() {
   function handleTabChange(tab: string) { setActiveTab(tab); setCurrentPage(1); }
   function handleSearch(q: string) { setSearchQuery(q); setCurrentPage(1); }
 
-  function handleAddCampaign(campaign: Campaign) {
-    setCampaigns((prev) => [campaign, ...prev]);
+  async function handleAddCampaign(campaign: Campaign) {
+    try {
+      const saved = await insertCampaign(campaign);
+      setCampaigns((prev) => [saved, ...prev]);
+      addNotification(`New campaign added: "${saved.name}"`);
+    } catch {
+      setCampaigns((prev) => [campaign, ...prev]);
+      addNotification(`New campaign added: "${campaign.name}"`);
+    }
     setShowNewModal(false);
     setActiveTab(campaign.group);
     setSearchQuery("");
     setCurrentPage(1);
-    addNotification(`New campaign added: "${campaign.name}"`);
   }
 
   function handleAddGroup(name: string) {
@@ -148,11 +161,20 @@ export default function CampaignsPage() {
     ]);
   }
 
-  function handleDeleteCampaign(id: number) {
+  async function handleDeleteCampaign(id: number) {
     setCampaigns((prev) => prev.filter((c) => c.id !== id));
+    try { await deleteCampaign(id); } catch { /* already removed from UI */ }
   }
 
   const tabs = [{ label: "All", group: "All" }, ...allGroups.map((g) => ({ label: g, group: g }))];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 sm:p-6 w-full">

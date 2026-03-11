@@ -1,3 +1,5 @@
+import { supabase } from "./supabase";
+
 export type Status = "Completed" | "Stopped" | "Active" | "Paused";
 export type Group = string;
 
@@ -15,125 +17,62 @@ export interface Campaign {
   isDuplicate?: boolean;
 }
 
-export const initialCampaigns: Campaign[] = [
-  {
-    id: 1,
-    name: "Lucky7even REACTIVATION offer to 300% deposit",
-    totalContacts: 317,
-    totalCalls: 2940,
-    connectRate: "11.36%",
-    connectCount: 36,
-    successRate: "38.89%",
-    successCount: 14,
-    status: "Completed",
-    group: "Reactivation",
-  },
-  {
-    id: 2,
-    name: "Lucky7even RND Calls v2 German",
-    totalContacts: 1028,
-    totalCalls: 54,
-    connectRate: "0%",
-    connectCount: 0,
-    successRate: "0%",
-    successCount: 0,
-    status: "Stopped",
-    group: "RND",
-  },
-  {
-    id: 3,
-    name: "Lucky7even RND Calls v2 Italian",
-    totalContacts: 187,
-    totalCalls: 531,
-    connectRate: "19.79%",
-    connectCount: 37,
-    successRate: "18.92%",
-    successCount: 7,
-    status: "Stopped",
-    group: "RND",
-  },
-  {
-    id: 4,
-    name: "Lucky7even RND Calls v2 (Sign Up Date)",
-    totalContacts: 432,
-    totalCalls: 4300,
-    connectRate: "0.93%",
-    connectCount: 4,
-    successRate: "0%",
-    successCount: 0,
-    status: "Stopped",
-    group: "RND",
-  },
-  {
-    id: 5,
-    name: "Lucky7even RND Calls v2 - Canada",
-    totalContacts: 331,
-    totalCalls: 2682,
-    connectRate: "27.19%",
-    connectCount: 90,
-    successRate: "16.67%",
-    successCount: 15,
-    status: "Stopped",
-    group: "Canada",
-  },
-  {
-    id: 6,
-    name: "Lucky7even RND Calls v2 - Canada (1-15)",
-    totalContacts: 373,
-    totalCalls: 2852,
-    connectRate: "33.51%",
-    connectCount: 125,
-    successRate: "28.00%",
-    successCount: 35,
-    status: "Stopped",
-    group: "Canada",
-  },
-  {
-    id: 7,
-    name: "Lucky7even RND Calls v2 - Canada (15-90)",
-    totalContacts: 1294,
-    totalCalls: 10112,
-    connectRate: "26.04%",
-    connectCount: 337,
-    successRate: "31.45%",
-    successCount: 106,
-    status: "Stopped",
-    group: "Canada",
-  },
-  {
-    id: 8,
-    name: "Lucky7even RND Calls v2 - Canada (17-23)",
-    totalContacts: 209,
-    totalCalls: 1545,
-    connectRate: "27.27%",
-    connectCount: 57,
-    successRate: "42.11%",
-    successCount: 24,
-    status: "Stopped",
-    group: "Canada",
-  },
-  {
-    id: 9,
-    name: "Lucky7even Legacy Promo - Q4",
-    totalContacts: 512,
-    totalCalls: 3210,
-    connectRate: "21.50%",
-    connectCount: 69,
-    successRate: "14.49%",
-    successCount: 10,
-    status: "Paused",
-    group: "Archived",
-  },
-  {
-    id: 10,
-    name: "Lucky7even Welcome Bonus v1",
-    totalContacts: 391,
-    totalCalls: 1699,
-    connectRate: "15.24%",
-    connectCount: 26,
-    successRate: "11.54%",
-    successCount: 3,
-    status: "Paused",
-    group: "Archived",
-  },
-];
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function rowToCampaign(row: any): Campaign {
+  return {
+    id: row.id,
+    name: row.name,
+    totalContacts: row.total_contacts,
+    totalCalls: row.total_calls,
+    connectRate: row.connect_rate,
+    connectCount: row.connect_count,
+    successRate: row.success_rate,
+    successCount: row.success_count,
+    status: row.status,
+    group: row.group_name,
+    isDuplicate: row.is_duplicate ?? false,
+  };
+}
+
+export async function fetchCampaigns(): Promise<Campaign[]> {
+  const { data, error } = await supabase
+    .from("campaigns")
+    .select("*")
+    .order("id", { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map(rowToCampaign);
+}
+
+export async function insertCampaign(c: Omit<Campaign, "id">): Promise<Campaign> {
+  const { data, error } = await supabase
+    .from("campaigns")
+    .insert({
+      name: c.name,
+      total_contacts: c.totalContacts,
+      total_calls: c.totalCalls,
+      connect_rate: c.connectRate,
+      connect_count: c.connectCount,
+      success_rate: c.successRate,
+      success_count: c.successCount,
+      status: c.status,
+      group_name: c.group,
+      is_duplicate: c.isDuplicate ?? false,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return rowToCampaign(data);
+}
+
+export async function deleteCampaign(id: number): Promise<void> {
+  const { error } = await supabase.from("campaigns").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function updateCampaignName(id: number, name: string): Promise<void> {
+  const { error } = await supabase.from("campaigns").update({ name }).eq("id", id);
+  if (error) throw error;
+}
+
+// Kept as empty fallback so existing imports don't break
+export const initialCampaigns: Campaign[] = [];
