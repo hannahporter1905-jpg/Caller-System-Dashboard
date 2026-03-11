@@ -166,7 +166,7 @@ export default function CampaignDetailPage() {
   }
 
   function handleSaveEdit() {
-    if (editName.trim()) {
+    if (editName.trim() && campaign) {
       setCampaign({ ...campaign, name: editName.trim() });
     }
     setShowEdit(false);
