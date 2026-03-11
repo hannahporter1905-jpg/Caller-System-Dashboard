@@ -52,6 +52,7 @@ export default function CampaignsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [showNewModal, setShowNewModal] = useState(false);
   const [showAddGroupModal, setShowAddGroupModal] = useState(false);
+  const [deleteGroupConfirm, setDeleteGroupConfirm] = useState<string | null>(null);
 
   const allGroups = useMemo(() => [...BUILTIN_GROUPS, ...customGroups], [customGroups]);
 
@@ -131,6 +132,7 @@ export default function CampaignsPage() {
     setCustomGroups((prev) => prev.filter((g) => g !== name));
     if (activeTab === name) setActiveTab("All");
     setCurrentPage(1);
+    setDeleteGroupConfirm(null);
   }
 
   const tabs = [{ label: "All", group: "All" }, ...allGroups.map((g) => ({ label: g, group: g }))];
@@ -155,14 +157,14 @@ export default function CampaignsPage() {
       <div className="mb-5 border-b border-gray-200 overflow-x-auto hide-scrollbar">
         <div className="flex items-center min-w-max">
           {tabs.map((tab) => {
-            const isCustom = customGroups.includes(tab.group);
+            const isDeletable = tab.group !== "All";
             const isActive = activeTab === tab.group;
             return (
               <div key={tab.group} className="group relative flex items-center">
                 <button
                   onClick={() => handleTabChange(tab.group)}
                   className={`flex items-center gap-1.5 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap ${
-                    isCustom ? "pl-3 sm:pl-4 pr-1" : "px-3 sm:px-4"
+                    isDeletable ? "pl-3 sm:pl-4 pr-1" : "px-3 sm:px-4"
                   } ${
                     isActive
                       ? "border-blue-600 text-blue-600"
@@ -178,9 +180,9 @@ export default function CampaignsPage() {
                     {tabCounts[tab.group] ?? 0}
                   </span>
                 </button>
-                {isCustom && (
+                {isDeletable && (
                   <button
-                    onClick={() => handleDeleteGroup(tab.group)}
+                    onClick={() => setDeleteGroupConfirm(tab.group)}
                     className="opacity-0 group-hover:opacity-100 transition-opacity ml-0.5 mr-2 p-0.5 rounded-full hover:bg-gray-200 text-gray-400 hover:text-gray-600 -mb-px"
                     title={`Remove ${tab.label}`}
                   >
@@ -277,6 +279,32 @@ export default function CampaignsPage() {
           onClose={() => setShowAddGroupModal(false)}
           onAdd={handleAddGroup}
         />
+      )}
+
+      {/* ── Delete group confirmation modal ── */}
+      {deleteGroupConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <h2 className="text-base font-semibold text-gray-900 mb-1">Delete Group</h2>
+            <p className="text-sm text-gray-500 mb-6">
+              Are you sure you want to delete the <span className="font-medium text-gray-700">{deleteGroupConfirm}</span> group?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setDeleteGroupConfirm(null)}
+                className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                No
+              </button>
+              <button
+                onClick={() => handleDeleteGroup(deleteGroupConfirm)}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors"
+              >
+                Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
