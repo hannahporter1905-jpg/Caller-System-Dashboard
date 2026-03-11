@@ -31,7 +31,7 @@ export default function AppCenterPage() {
     : CATEGORIES;
 
   return (
-    <div className="flex flex-col h-full min-h-0 max-w-[1500px]">
+    <div className="flex flex-col h-full min-h-0 w-full">
       {/* Header */}
       <div className="px-4 sm:px-6 pt-5 pb-4 flex-shrink-0">
         <div className="flex items-center justify-between gap-3 flex-wrap">

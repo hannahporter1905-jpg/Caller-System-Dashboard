@@ -5,7 +5,7 @@ interface PlaceholderPageProps {
 
 export default function PlaceholderPage({ title, description }: PlaceholderPageProps) {
   return (
-    <div className="p-4 sm:p-6 max-w-[1500px] flex flex-col items-center justify-center min-h-[60vh] text-center">
+    <div className="p-4 sm:p-6 w-full flex flex-col items-center justify-center min-h-[60vh] text-center">
       <div className="w-14 h-14 sm:w-16 sm:h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-4">
         <span className="text-blue-600 text-2xl font-bold">{title[0]}</span>
       </div>
