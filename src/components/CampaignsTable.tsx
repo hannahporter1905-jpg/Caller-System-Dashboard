@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowUpRight, Phone, ExternalLink, MoreHorizontal, Copy } from "lucide-react";
+import { Trash2, Phone, ExternalLink, MoreHorizontal, Copy } from "lucide-react";
 import StatusBadge from "./StatusBadge";
 import { Campaign } from "@/lib/campaignData";
 
@@ -10,9 +10,10 @@ interface CampaignsTableProps {
   campaigns: Campaign[];
   onDuplicate?: (id: number) => void;
   onDelete?: (id: number) => void;
+  onArchive?: (id: number) => void;
 }
 
-export default function CampaignsTable({ campaigns, onDuplicate }: CampaignsTableProps) {
+export default function CampaignsTable({ campaigns, onDuplicate, onArchive }: CampaignsTableProps) {
   const router = useRouter();
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -55,15 +56,20 @@ export default function CampaignsTable({ campaigns, onDuplicate }: CampaignsTabl
             {campaigns.map((campaign, index) => (
               <tr
                 key={campaign.id}
+                onClick={() => router.push('/campaigns/' + campaign.id)}
                 className={`group border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer ${
                   index === campaigns.length - 1 ? "border-b-0" : ""
                 }`}
               >
-                <td className="px-4 py-3">
+                <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center gap-1">
-                    <span className="w-6 h-6 rounded bg-blue-50 flex items-center justify-center flex-shrink-0">
-                      <ArrowUpRight size={12} className="text-blue-500" />
-                    </span>
+                    <button
+                      onClick={() => onArchive?.(campaign.id)}
+                      className="w-6 h-6 rounded bg-red-50 flex items-center justify-center flex-shrink-0 hover:bg-red-100 transition-colors"
+                      title="Archive campaign"
+                    >
+                      <Trash2 size={12} className="text-red-400" />
+                    </button>
                     <span className="w-6 h-6 rounded bg-gray-100 flex items-center justify-center flex-shrink-0">
                       <Phone size={12} className="text-gray-500" />
                     </span>
@@ -99,7 +105,7 @@ export default function CampaignsTable({ campaigns, onDuplicate }: CampaignsTabl
                   <StatusBadge status={campaign.status} />
                 </td>
                 {/* Actions */}
-                <td className="px-3 py-3">
+                <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center justify-end gap-1">
                     <button
                       onClick={() => router.push('/campaigns/' + campaign.id)}

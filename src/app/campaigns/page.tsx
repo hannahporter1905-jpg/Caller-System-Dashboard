@@ -40,7 +40,7 @@ import CampaignsTable from "@/components/CampaignsTable";
 import NewCampaignModal from "@/components/NewCampaignModal";
 import AddGroupModal from "@/components/AddGroupModal";
 import Pagination from "@/components/Pagination";
-import { fetchCampaigns, insertCampaign, deleteCampaign, Campaign, Group } from "@/lib/campaignData";
+import { fetchCampaigns, insertCampaign, deleteCampaign, archiveCampaign, Campaign, Group } from "@/lib/campaignData";
 import { fetchAllContacts, Contact } from "@/lib/contactData";
 
 const BUILTIN_GROUPS: Group[] = ["Canada", "RND", "Reactivation", "Archived"];
@@ -171,6 +171,12 @@ export default function CampaignsPage() {
     try { await deleteCampaign(id); } catch { /* already removed from UI */ }
   }
 
+  async function handleArchiveCampaign(id: number) {
+    setCampaigns((prev) => prev.map((c) => c.id === id ? { ...c, group: "Archived" } : c));
+    try { await archiveCampaign(id); } catch { /* already updated in UI */ }
+    setActiveTab("Archived");
+  }
+
   const tabs = [{ label: "All", group: "All" }, ...allGroups.map((g) => ({ label: g, group: g }))];
 
   if (loading) {
@@ -246,22 +252,8 @@ export default function CampaignsPage() {
         </div>
       </div>
 
-      {/* ── Search ── */}
-      <div className="mb-5">
-        <div className="relative w-full max-w-md">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search Campaigns"
-            value={searchQuery}
-            onChange={(e) => handleSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-          />
-        </div>
-      </div>
-
       {/* ── Stats ── 2 cols mobile / 4 cols desktop */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-5">
         {/* Total Contacts */}
         <StatCard
           title="Total Contacts"
@@ -296,12 +288,27 @@ export default function CampaignsPage() {
         />
       </div>
 
+      {/* ── Search ── */}
+      <div className="mb-4">
+        <div className="relative w-full max-w-md">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search Campaigns"
+            value={searchQuery}
+            onChange={(e) => handleSearch(e.target.value)}
+            className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+          />
+        </div>
+      </div>
+
       {/* ── Table ── */}
       <div className="rounded-xl border border-gray-200 overflow-hidden">
         <CampaignsTable
           campaigns={paginated}
           onDuplicate={handleDuplicateCampaign}
           onDelete={handleDeleteCampaign}
+          onArchive={handleArchiveCampaign}
         />
       </div>
 
