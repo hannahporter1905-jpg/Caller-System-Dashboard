@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import { useNotifications } from "@/lib/notificationsContext";
 import { Search, Plus, X } from "lucide-react";
 import {
   AreaChart, Area, BarChart, Bar, ResponsiveContainer, Tooltip, XAxis
@@ -45,6 +46,7 @@ const BUILTIN_GROUPS: Group[] = ["Canada", "RND", "Reactivation", "Archived"];
 const PAGE_SIZE = 5;
 
 export default function CampaignsPage() {
+  const { addNotification } = useNotifications();
   const [campaigns, setCampaigns] = useState<Campaign[]>(initialCampaigns);
   const [customGroups, setCustomGroups] = useState<Group[]>([]);
   const [activeTab, setActiveTab] = useState<string>("All");
@@ -119,6 +121,7 @@ export default function CampaignsPage() {
     setActiveTab(campaign.group);
     setSearchQuery("");
     setCurrentPage(1);
+    addNotification(`New campaign added: "${campaign.name}"`);
   }
 
   function handleAddGroup(name: string) {

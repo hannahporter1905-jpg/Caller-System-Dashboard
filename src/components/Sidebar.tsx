@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useRef, useState, useEffect } from "react";
 import {
   Bell,
   Search,
@@ -10,6 +11,7 @@ import {
   BookOpen,
   Phone,
 } from "lucide-react";
+import { useNotifications } from "@/lib/notificationsContext";
 
 const navItems = [
   { label: "Campaigns", href: "/campaigns", icon: Megaphone },
@@ -17,6 +19,80 @@ const navItems = [
   { label: "Knowledge", href: "/knowledge-bases", icon: BookOpen },
   { label: "Phone Nos", href: "/phone-numbers", icon: Phone },
 ];
+
+function NotificationBell({ size = 18 }: { size?: number }) {
+  const { notifications, unreadCount, markAllRead } = useNotifications();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  function handleOpen() {
+    setOpen((v) => !v);
+    if (!open && unreadCount > 0) markAllRead();
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={handleOpen}
+        className="text-gray-400 hover:text-gray-600 transition-colors relative"
+      >
+        <Bell size={size} />
+        {unreadCount > 0 && (
+          <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-0.5 bg-red-500 rounded-full flex items-center justify-center text-white text-[9px] font-bold leading-none">
+            {unreadCount > 9 ? "9+" : unreadCount}
+          </span>
+        )}
+        {unreadCount === 0 && notifications.length === 0 && (
+          <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full mt-2 z-50 w-72 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+            <span className="text-sm font-semibold text-gray-900">Notifications</span>
+            {notifications.length > 0 && (
+              <button
+                onClick={markAllRead}
+                className="text-xs text-blue-600 hover:underline"
+              >
+                Mark all read
+              </button>
+            )}
+          </div>
+          {notifications.length === 0 ? (
+            <p className="px-4 py-6 text-center text-xs text-gray-400">No notifications yet.</p>
+          ) : (
+            <ul className="max-h-72 overflow-y-auto divide-y divide-gray-50">
+              {notifications.map((n) => (
+                <li
+                  key={n.id}
+                  className={`flex items-start gap-3 px-4 py-3 ${n.read ? "" : "bg-blue-50"}`}
+                >
+                  <span className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${n.read ? "bg-gray-300" : "bg-blue-500"}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-gray-800 leading-snug">{n.message}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{n.time}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function SidebarContent() {
   const pathname = usePathname();
@@ -33,10 +109,7 @@ function SidebarContent() {
             Rooster Partners
           </span>
         </div>
-        <button className="text-gray-400 hover:text-gray-600 transition-colors relative">
-          <Bell size={18} />
-          <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
-        </button>
+        <NotificationBell size={18} />
       </div>
 
       {/* Global Search */}
@@ -96,10 +169,7 @@ function MobileTopBar() {
         <span className="font-semibold text-gray-900 text-sm">{pageTitle}</span>
       </div>
       <div className="flex items-center gap-3">
-        <button className="relative text-gray-500 hover:text-gray-700 transition-colors">
-          <Bell size={20} />
-          <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
-        </button>
+        <NotificationBell size={20} />
         <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
           <span className="text-white text-xs font-bold">RP</span>
         </div>
