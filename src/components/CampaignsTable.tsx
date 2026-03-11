@@ -58,7 +58,7 @@ export default function CampaignsTable({ campaigns, onDuplicate, onDelete }: Cam
             {campaigns.map((campaign, index) => (
               <tr
                 key={campaign.id}
-                className={`border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer ${
+                className={`group border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer ${
                   index === campaigns.length - 1 ? "border-b-0" : ""
                 }`}
               >
@@ -111,6 +111,18 @@ export default function CampaignsTable({ campaigns, onDuplicate, onDelete }: Cam
                     >
                       <ExternalLink size={14} />
                     </button>
+                    {/* Trash — visible on row hover */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteConfirmId(campaign.id);
+                      }}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md"
+                      title="Archive"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                    {/* More (Duplicate only) */}
                     <div className="relative">
                       <button
                         onClick={(e) => {
@@ -134,17 +146,6 @@ export default function CampaignsTable({ campaigns, onDuplicate, onDelete }: Cam
                           >
                             <Copy size={14} className="text-gray-400" />
                             Duplicate
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDeleteConfirmId(campaign.id);
-                              setOpenMenuId(null);
-                            }}
-                            className="flex items-center gap-2.5 w-full px-4 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors"
-                          >
-                            <Trash2 size={14} />
-                            Archive
                           </button>
                         </div>
                       )}
