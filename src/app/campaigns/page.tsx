@@ -175,13 +175,11 @@ export default function CampaignsPage() {
   async function handleArchiveCampaign(id: number) {
     setCampaigns((prev) => prev.map((c) => c.id === id ? { ...c, group: "Archived" } : c));
     try { await archiveCampaign(id); } catch { /* already updated in UI */ }
-    setActiveTab("Archived");
   }
 
   async function handleRecoverCampaign(id: number) {
     setCampaigns((prev) => prev.map((c) => c.id === id ? { ...c, group: "RND" } : c));
     try { await recoverCampaign(id); } catch { /* already updated in UI */ }
-    setActiveTab("RND");
   }
 
   const tabs = [{ label: "All", group: "All" }, ...allGroups.map((g) => ({ label: g, group: g }))];

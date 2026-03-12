@@ -17,6 +17,7 @@ interface CampaignsTableProps {
 export default function CampaignsTable({ campaigns, onDuplicate, onArchive, onRecover, onDelete }: CampaignsTableProps) {
   const router = useRouter();
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number }>({ top: 0, right: 0 });
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -25,8 +26,13 @@ export default function CampaignsTable({ campaigns, onDuplicate, onArchive, onRe
         setOpenMenuId(null);
       }
     }
+    function handleScroll() { setOpenMenuId(null); }
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    window.addEventListener("scroll", handleScroll, true);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("scroll", handleScroll, true);
+    };
   }, []);
 
   if (campaigns.length === 0) {
@@ -37,9 +43,11 @@ export default function CampaignsTable({ campaigns, onDuplicate, onArchive, onRe
     );
   }
 
+  const openMenu = campaigns.find((c) => c.id === openMenuId);
+
   return (
     <>
-      <div className="bg-white w-full overflow-x-auto" ref={menuRef}>
+      <div className="bg-white w-full overflow-x-auto">
         <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50">
@@ -111,74 +119,22 @@ export default function CampaignsTable({ campaigns, onDuplicate, onArchive, onRe
                     >
                       <ExternalLink size={14} />
                     </button>
-                    {/* More (Duplicate only) */}
-                    <div className="relative">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setOpenMenuId(openMenuId === campaign.id ? null : campaign.id);
-                        }}
-                        className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
-                        title="More options"
-                      >
-                        <MoreHorizontal size={14} />
-                      </button>
-                      {openMenuId === campaign.id && (
-                        <div className="absolute right-0 top-full mt-1 z-20 bg-white border border-gray-200 rounded-xl shadow-lg py-1 min-w-[140px]">
-                          {campaign.group === "Archived" ? (
-                            <>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onRecover?.(campaign.id);
-                                  setOpenMenuId(null);
-                                }}
-                                className="flex items-center gap-2.5 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                              >
-                                <RotateCcw size={14} className="text-gray-400" />
-                                Recover
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onDelete?.(campaign.id);
-                                  setOpenMenuId(null);
-                                }}
-                                className="flex items-center gap-2.5 w-full px-4 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors"
-                              >
-                                <Trash2 size={14} className="text-red-400" />
-                                Delete
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onDuplicate?.(campaign.id);
-                                  setOpenMenuId(null);
-                                }}
-                                className="flex items-center gap-2.5 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                              >
-                                <Copy size={14} className="text-gray-400" />
-                                Duplicate
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onArchive?.(campaign.id);
-                                  setOpenMenuId(null);
-                                }}
-                                className="flex items-center gap-2.5 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                              >
-                                <Archive size={14} className="text-gray-400" />
-                                Archive
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      )}
-                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (openMenuId === campaign.id) {
+                          setOpenMenuId(null);
+                        } else {
+                          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                          setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+                          setOpenMenuId(campaign.id);
+                        }
+                      }}
+                      className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+                      title="More options"
+                    >
+                      <MoreHorizontal size={14} />
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -187,6 +143,66 @@ export default function CampaignsTable({ campaigns, onDuplicate, onArchive, onRe
         </table>
       </div>
 
+      {/* Dropdown rendered outside the table via fixed positioning */}
+      {openMenuId !== null && openMenu && (
+        <div
+          ref={menuRef}
+          style={{ position: "fixed", top: menuPos.top, right: menuPos.right }}
+          className="z-50 bg-white border border-gray-200 rounded-xl shadow-lg py-1 min-w-[140px]"
+        >
+          {openMenu.group === "Archived" ? (
+            <>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRecover?.(openMenu.id);
+                  setOpenMenuId(null);
+                }}
+                className="flex items-center gap-2.5 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                <RotateCcw size={14} className="text-gray-400" />
+                Recover
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete?.(openMenu.id);
+                  setOpenMenuId(null);
+                }}
+                className="flex items-center gap-2.5 w-full px-4 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors"
+              >
+                <Trash2 size={14} className="text-red-400" />
+                Delete
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDuplicate?.(openMenu.id);
+                  setOpenMenuId(null);
+                }}
+                className="flex items-center gap-2.5 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                <Copy size={14} className="text-gray-400" />
+                Duplicate
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onArchive?.(openMenu.id);
+                  setOpenMenuId(null);
+                }}
+                className="flex items-center gap-2.5 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                <Archive size={14} className="text-gray-400" />
+                Archive
+              </button>
+            </>
+          )}
+        </div>
+      )}
     </>
   );
 }
