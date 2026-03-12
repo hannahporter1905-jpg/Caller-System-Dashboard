@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Plus, X, Trash2 } from "lucide-react";
+import { useToast } from "@/lib/toastContext";
 
 interface KnowledgeBase {
   id: number;
@@ -21,6 +22,7 @@ function formatDate(date: Date): string {
 }
 
 export default function KnowledgeBasesPage() {
+  const { showToast } = useToast();
   const [items, setItems] = useState<KnowledgeBase[]>(initialKnowledgeBases);
   const [showModal, setShowModal] = useState(false);
   const [newName, setNewName] = useState("");
@@ -28,12 +30,14 @@ export default function KnowledgeBasesPage() {
 
   function handleCreate() {
     if (!newName.trim()) return;
+    const name = newName.trim();
     setItems((prev) => [
-      { id: prev.length + 1, name: newName.trim(), dataSources: 0, dateOfCreation: formatDate(new Date()) },
+      { id: prev.length + 1, name, dataSources: 0, dateOfCreation: formatDate(new Date()) },
       ...prev,
     ]);
     setNewName("");
     setShowModal(false);
+    showToast(`Knowledge base "${name}" created successfully!`);
   }
 
   function handleDelete(id: number) {

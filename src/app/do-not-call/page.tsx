@@ -3,8 +3,10 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { PhoneOff, Plus, X, Upload, Phone, Search, Loader2, AlertCircle } from "lucide-react";
 import { fetchDncEntries, insertDncEntries, deleteDncEntry, DncEntry } from "@/lib/dncData";
+import { useToast } from "@/lib/toastContext";
 
 export default function DoNotCallPage() {
+  const { showToast } = useToast();
   const [entries, setEntries] = useState<DncEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -31,14 +33,18 @@ export default function DoNotCallPage() {
     setShowModal(false);
     try {
       const added = await insertDncEntries(numbers);
-      // Merge: prepend newly inserted rows, skip duplicates by id
+      const fresh: DncEntry[] = [];
       setEntries((prev) => {
         const existingIds = new Set(prev.map((e) => e.id));
-        const fresh = added.filter((e) => !existingIds.has(e.id));
-        return [...fresh, ...prev];
+        const newEntries = added.filter((e) => !existingIds.has(e.id));
+        fresh.push(...newEntries);
+        return [...newEntries, ...prev];
       });
+      const count = added.length;
+      showToast(count === 1 ? `1 phone number added to DNC list.` : `${count} phone numbers added to DNC list.`);
     } catch {
       setError("Failed to add numbers. Please try again.");
+      showToast("Failed to add numbers. Please try again.", "error");
     }
   }
 

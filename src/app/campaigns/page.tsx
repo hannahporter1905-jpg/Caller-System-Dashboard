@@ -41,6 +41,7 @@ import NewCampaignModal from "@/components/NewCampaignModal";
 import AddGroupModal from "@/components/AddGroupModal";
 import Pagination from "@/components/Pagination";
 import { fetchCampaigns, insertCampaign, deleteCampaign, archiveCampaign, recoverCampaign, Campaign, Group } from "@/lib/campaignData";
+import { useToast } from "@/lib/toastContext";
 import { fetchAllContacts, Contact } from "@/lib/contactData";
 
 const BUILTIN_GROUPS: Group[] = ["Canada", "RND", "Reactivation", "Archived"];
@@ -48,6 +49,7 @@ const PAGE_SIZE = 5;
 
 export default function CampaignsPage() {
   const { addNotification } = useNotifications();
+  const { showToast } = useToast();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [allContacts, setAllContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
@@ -133,9 +135,11 @@ export default function CampaignsPage() {
       const saved = await insertCampaign(campaign);
       setCampaigns((prev) => [saved, ...prev]);
       addNotification(`New campaign added: "${saved.name}"`);
+      showToast(`Campaign "${saved.name}" added successfully!`);
     } catch {
       setCampaigns((prev) => [campaign, ...prev]);
       addNotification(`New campaign added: "${campaign.name}"`);
+      showToast(`Campaign "${campaign.name}" added successfully!`);
     }
     setShowNewModal(false);
     setActiveTab(campaign.group);
