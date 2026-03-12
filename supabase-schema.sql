@@ -79,3 +79,16 @@ insert into contacts (campaign_id, name, phone, attempts, last_attempt, call_dur
 -- Reset sequences so new inserts get correct IDs
 select setval('campaigns_id_seq', (select max(id) from campaigns));
 select setval('contacts_id_seq', (select max(id) from contacts));
+
+-- Create do_not_call table
+create table if not exists do_not_call (
+  id serial primary key,
+  phone_number text not null unique,
+  added_at timestamptz default now()
+);
+
+-- Enable Row Level Security
+alter table do_not_call enable row level security;
+
+-- Allow all operations for anon (public access for now)
+create policy "Allow all do_not_call" on do_not_call for all using (true) with check (true);
