@@ -226,8 +226,8 @@ function AddPhoneNumbersModal({
   function parseCSV(text: string): string[] {
     return text
       .split(/[\n,]/)
-      .map((s) => s.replace(/[^0-9+]/g, "").trim())
-      .filter((s) => s.length >= 7);
+      .map((s) => s.replace(/[^0-9+\-\s()]/g, "").trim())
+      .filter((s) => s.replace(/\D/g, "").length >= 3);
   }
 
   async function handleFile(file: File) {
@@ -254,7 +254,7 @@ function AddPhoneNumbersModal({
     const numbers = manualText
       .split(/[\n,;]/)
       .map((s) => s.trim())
-      .filter((s) => s.length >= 7);
+      .filter((s) => s.replace(/\D/g, "").length >= 3);
     if (numbers.length > 0) {
       setSaving(true);
       await onAdd(numbers);
