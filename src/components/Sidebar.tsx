@@ -309,17 +309,6 @@ function SidebarContent() {
         </ul>
       </nav>
 
-      <div className="px-3 py-3 border-t border-[var(--border)]">
-        <div className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-[var(--bg-hover)] transition-colors cursor-pointer">
-          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center flex-shrink-0">
-            <span className="text-white text-[10px] font-bold">RP</span>
-          </div>
-          <div className="min-w-0">
-            <p className="text-xs font-medium text-[var(--text-1)] truncate">Rooster Partners</p>
-            <p className="text-[10px] text-[var(--text-3)] truncate">Admin</p>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
