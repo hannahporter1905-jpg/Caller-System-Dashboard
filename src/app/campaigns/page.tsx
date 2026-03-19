@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
+import Link from "next/link";
 import { useNotifications } from "@/lib/notificationsContext";
 import { Search, Plus, X, Megaphone as MegaphoneIcon } from "lucide-react";
 import {
@@ -210,14 +211,14 @@ export default function CampaignsPage() {
             <p className="text-xs text-[var(--text-3)] mt-0.5">{campaigns.filter((c) => c.group !== "Archived").length} active campaigns</p>
           </div>
         </div>
-        <button
-          onClick={() => setShowNewModal(true)}
+        <Link
+          href="/campaigns/new"
           className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-full transition-colors shadow-md shadow-blue-600/20 flex-shrink-0"
         >
           <Plus size={15} />
           <span className="hidden sm:inline">New Campaign</span>
           <span className="sm:hidden">New</span>
-        </button>
+        </Link>
       </div>
 
       {/* ── Tab bar ── */}
