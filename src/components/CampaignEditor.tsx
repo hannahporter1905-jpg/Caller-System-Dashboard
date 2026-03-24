@@ -735,7 +735,7 @@ function CampaignEditorInner({ onClose, onSave, nextId, availableGroups, initial
             </div>
 
             {/* ── Scrollable body ── */}
-            <div className="flex-grow overflow-y-auto p-6 flex flex-col gap-6">
+            <div className="flex-grow overflow-y-auto p-6 flex flex-col gap-6" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
 
               {/* Campaign name – floating label */}
               <div className="relative w-full">
