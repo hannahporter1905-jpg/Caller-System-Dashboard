@@ -88,17 +88,17 @@ interface WfNodeData extends Record<string, unknown> {
 
 const initialWorkflowNodes: Node<WfNodeData>[] = [
   { id: "wf-triggers",  type: "wfSimpleNode",  position: { x: 0,    y: 0 }, data: { title: "Triggers",        icon: "bolt",  description: "Select events that add or archive contacts.",      actionLabel: "Add" } },
-  { id: "wf-precall",   type: "wfSimpleNode",  position: { x: 280,  y: 0 }, data: { title: "Pre-Call Actions",icon: "share", description: "Run actions before the call is dialed.",          actionLabel: "Add" } },
-  { id: "wf-center",    type: "wfCenterNode",  position: { x: 560,  y: 0 }, data: {} },
-  { id: "wf-success",   type: "wfSimpleNode",  position: { x: 890,  y: 0 }, data: { title: "Success Criteria",icon: "thumb", description: "Define the possible outcomes of a conversation.", actionLabel: "Generate" } },
-  { id: "wf-postcall",  type: "wfSimpleNode",  position: { x: 1170, y: 0 }, data: { title: "Post-Call Actions",icon: "share", description: "Execute actions based on call outcomes.",        actionLabel: "Add" } },
+  { id: "wf-precall",   type: "wfSimpleNode",  position: { x: 308,  y: 0 }, data: { title: "Pre-Call Actions",icon: "share", description: "Run actions before the call is dialed.",          actionLabel: "Add" } },
+  { id: "wf-center",    type: "wfCenterNode",  position: { x: 616,  y: 0 }, data: {} },
+  { id: "wf-success",   type: "wfSimpleNode",  position: { x: 952,  y: 0 }, data: { title: "Success Criteria",icon: "thumb", description: "Define the possible outcomes of a conversation.", actionLabel: "Generate" } },
+  { id: "wf-postcall",  type: "wfSimpleNode",  position: { x: 1260, y: 0 }, data: { title: "Post-Call Actions",icon: "share", description: "Execute actions based on call outcomes.",        actionLabel: "Add" } },
 ];
 
 const initialWorkflowEdges: Edge[] = [
-  { id: "wf-e1", source: "wf-triggers", target: "wf-precall",  type: "straight", style: { stroke: "#D1D5DB", strokeWidth: 2, strokeDasharray: "6 4" } },
-  { id: "wf-e2", source: "wf-precall",  target: "wf-center",   type: "straight", style: { stroke: "#D1D5DB", strokeWidth: 2, strokeDasharray: "6 4" } },
-  { id: "wf-e3", source: "wf-center",   target: "wf-success",  type: "straight", style: { stroke: "#D1D5DB", strokeWidth: 2, strokeDasharray: "6 4" } },
-  { id: "wf-e4", source: "wf-success",  target: "wf-postcall", type: "straight", style: { stroke: "#D1D5DB", strokeWidth: 2, strokeDasharray: "6 4" } },
+  { id: "wf-e1", source: "wf-triggers", target: "wf-precall",  type: "straight", style: { stroke: "#CBD5E1", strokeWidth: 1, strokeDasharray: "7 7" } },
+  { id: "wf-e2", source: "wf-precall",  target: "wf-center",   type: "straight", style: { stroke: "#CBD5E1", strokeWidth: 1, strokeDasharray: "7 7" } },
+  { id: "wf-e3", source: "wf-center",   target: "wf-success",  type: "straight", style: { stroke: "#CBD5E1", strokeWidth: 1, strokeDasharray: "7 7" } },
+  { id: "wf-e4", source: "wf-success",  target: "wf-postcall", type: "straight", style: { stroke: "#CBD5E1", strokeWidth: 1, strokeDasharray: "7 7" } },
 ];
 
 // ── Custom nodes ──────────────────────────────────────────────────────────
@@ -131,72 +131,124 @@ const nodeTypes = { startNode: StartNode, scriptNode: ScriptNode, wfSimpleNode: 
 // ── Workflow node components ───────────────────────────────────────────────
 
 function WfSimpleNode({ data }: { data: WfNodeData }) {
-  const iconEl = data.icon === "bolt" ? (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className="text-amber-500 shrink-0"><path d="M13 2L4.093 12.688H12L11 22L19.907 11.312H12L13 2Z" fill="currentColor"/></svg>
-  ) : data.icon === "thumb" ? (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className="text-blue-500 shrink-0"><path d="M2 20h2a1 1 0 001-1V9a1 1 0 00-1-1H2v12zm16.5-12H13V6c0-1.66-1.34-3-3-3h-1v2c0 .55.45 1 1 1h.5C11.33 6 12 6.67 12 7.5V8h-2.5c-.83 0-1.5.67-1.5 1.5v9c0 .83.67 1.5 1.5 1.5h8a1.5 1.5 0 001.5-1.5v-9A1.5 1.5 0 0018.5 8z" fill="currentColor"/></svg>
+  const isBolt  = data.icon === "bolt";
+  const isThumb = data.icon === "thumb";
+
+  const iconEl = isBolt ? (
+    <span className="w-6 h-6 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center shrink-0">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" className="text-amber-500"><path d="M13 2L4.093 12.688H12L11 22L19.907 11.312H12L13 2Z" fill="currentColor"/></svg>
+    </span>
+  ) : isThumb ? (
+    <span className="w-6 h-6 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center shrink-0">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" className="text-blue-500"><path d="M2 20h2a1 1 0 001-1V9a1 1 0 00-1-1H2v12zm16.5-12H13V6c0-1.66-1.34-3-3-3h-1v2c0 .55.45 1 1 1h.5C11.33 6 12 6.67 12 7.5V8h-2.5c-.83 0-1.5.67-1.5 1.5v9c0 .83.67 1.5 1.5 1.5h8a1.5 1.5 0 001.5-1.5v-9A1.5 1.5 0 0018.5 8z" fill="currentColor"/></svg>
+    </span>
   ) : (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className="text-purple-500 shrink-0"><path fillRule="evenodd" clipRule="evenodd" d="M21.5 4.5C21.5 5.605 20.605 6.5 19.5 6.5C18.395 6.5 17.5 5.605 17.5 4.5C17.5 3.395 18.395 2.5 19.5 2.5C20.605 2.5 21.5 3.395 21.5 4.5ZM4.5 15.5C6.433 15.5 8 13.933 8 12C8 10.067 6.433 8.5 4.5 8.5C2.567 8.5 1 10.067 1 12C1 13.933 2.567 15.5 4.5 15.5ZM19.5 21.5C20.605 21.5 21.5 20.605 21.5 19.5C21.5 18.395 20.605 17.5 19.5 17.5C18.395 17.5 17.5 18.395 17.5 19.5C17.5 20.605 18.395 21.5 19.5 21.5Z" fill="currentColor"/></svg>
+    <span className="w-6 h-6 rounded-lg bg-purple-50 border border-purple-200 flex items-center justify-center shrink-0">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" className="text-purple-500"><path fillRule="evenodd" clipRule="evenodd" d="M21.5 4.5C21.5 5.605 20.605 6.5 19.5 6.5C18.395 6.5 17.5 5.605 17.5 4.5C17.5 3.395 18.395 2.5 19.5 2.5C20.605 2.5 21.5 3.395 21.5 4.5ZM4.5 15.5C6.433 15.5 8 13.933 8 12C8 10.067 6.433 8.5 4.5 8.5C2.567 8.5 1 10.067 1 12C1 13.933 2.567 15.5 4.5 15.5ZM19.5 21.5C20.605 21.5 21.5 20.605 21.5 19.5C21.5 18.395 20.605 17.5 19.5 17.5C18.395 17.5 17.5 18.395 17.5 19.5C17.5 20.605 18.395 21.5 19.5 21.5Z" fill="currentColor"/></svg>
+    </span>
   );
+
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 w-[220px]">
+    <div className="bg-white rounded-2xl outline outline-1 outline-offset-[-1px] outline-[#E4E7E5] hover:outline-[#3655E8] transition-all w-[258px] shadow-sm">
       <Handle type="target" position={Position.Left}  style={{ opacity: 0, pointerEvents: "none" }} />
       <Handle type="source" position={Position.Right} style={{ opacity: 0, pointerEvents: "none" }} />
-      <div className="flex items-center gap-2 mb-2">{iconEl}<span className="text-sm font-semibold text-gray-800">{data.title as string}</span></div>
-      <p className="text-xs text-gray-500 mb-4 leading-relaxed">{data.description as string}</p>
-      <button className="w-full border border-gray-200 rounded-xl py-2 text-sm text-gray-600 flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors nodrag">
-        {data.actionLabel === "Generate" ? (<><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M9 3L10.5 9H15L11 12L12.5 18L9 15L5.5 18L7 12L3 9H7.5L9 3Z" fill="currentColor"/></svg>Generate</>) : (<><span className="text-gray-400">+</span> Add</>)}
-      </button>
+      {/* Title row */}
+      <div className="h-11 flex items-center gap-2.5 px-4 border-b border-[#F1F3F2]">
+        {iconEl}
+        <span className="text-sm font-semibold text-[#181B19]">{data.title as string}</span>
+      </div>
+      {/* Body */}
+      <div className="p-4">
+        <p className="text-xs text-[#707B73] mb-4 leading-relaxed">{data.description as string}</p>
+        <button className="w-full border border-[#E4E7E5] rounded-xl py-2 text-sm text-[#707B73] flex items-center justify-center gap-2 hover:bg-[#F8F9F8] transition-colors nodrag">
+          {data.actionLabel === "Generate" ? (
+            <>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className="text-[#3655E8]"><path d="M9 3L10.5 9H15L11 12L12.5 18L9 15L5.5 18L7 12L3 9H7.5L9 3Z" fill="currentColor"/></svg>
+              Generate
+            </>
+          ) : (
+            <><span className="text-[#B0B8B4] text-base leading-none">+</span> Add</>
+          )}
+        </button>
+      </div>
     </div>
   );
 }
 
 function WfCenterNode({ data: _ }: { data: WfNodeData }) {
+  const [voiceMode, setVoiceMode] = useState<"voice" | "text">("voice");
+
   return (
-    <div className="flex flex-col gap-3 w-[260px]">
-      <Handle type="target" position={Position.Left}  style={{ opacity: 0, pointerEvents: "none", top: 60 }} />
-      <Handle type="source" position={Position.Right} style={{ opacity: 0, pointerEvents: "none", top: 60 }} />
-      {/* Script card */}
-      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-        <div className="flex items-center gap-1 p-3 border-b border-gray-100">
-          <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 text-xs font-semibold text-gray-800 nodrag">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path fillRule="evenodd" clipRule="evenodd" d="M19.5 9C21.433 9 23 7.433 23 5.5C23 3.567 21.433 2 19.5 2C17.567 2 16 3.567 16 5.5C16 7.433 17.567 9 19.5 9ZM19.5 7.5C20.605 7.5 21.5 6.605 21.5 5.5C21.5 4.395 20.605 3.5 19.5 3.5C18.395 3.5 17.5 4.395 17.5 5.5C17.5 6.605 18.395 7.5 19.5 7.5Z" fill="currentColor"/></svg>
-            Script
-          </button>
-          <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs text-gray-500 hover:bg-gray-50 nodrag">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path fillRule="evenodd" clipRule="evenodd" d="M1.08 5.285C1.444 3.049 2.804 1.539 4.848 1.103C6.043 0.849 7.069 1.066 7.846 1.74C8.174 2.024 9.496 3.596 9.788 4.05C10.27 4.797 10.463 5.858 10.282 6.756C10.127 7.523 9.899 7.931 8.823 9.373C8.28 10.1 7.837 10.736 7.837 10.785C7.838 10.912 8.349 11.96 8.611 12.374C9.008 12.999 9.54 13.64 10.129 14.202C10.682 14.729 11.578 15.4 11.728 15.4C11.767 15.4 12.478 15.053 13.308 14.629C14.97 13.781 15.294 13.671 16.128 13.671C17.095 13.671 18.003 14.035 18.701 14.703C19.283 15.261 20.456 16.701 20.655 17.102C21.159 18.119 21.112 19.152 20.506 20.388C19.906 21.609 18.84 22.483 17.519 22.836C16.933 22.993 15.763 23.048 15.048 22.954C12.85 22.663 10.427 21.485 8.066 19.561C7.174 18.834 5.481 17.103 4.866 16.289C2.747 13.485 1.383 10.444 1.057 7.793C0.972 7.097 0.984 5.891 1.08 5.285Z" fill="currentColor"/></svg>
+    <div className="bg-white rounded-2xl outline outline-1 outline-offset-[-1px] outline-[#E4E7E5] hover:outline-[#3655E8] transition-all w-[286px] shadow-sm overflow-hidden">
+      <Handle type="target" position={Position.Left}  style={{ opacity: 0, pointerEvents: "none", top: 56 }} />
+      <Handle type="source" position={Position.Right} style={{ opacity: 0, pointerEvents: "none", top: 56 }} />
+
+      {/* Title row */}
+      <div className="h-11 flex items-center gap-2.5 px-4 border-b border-[#F1F3F2]">
+        <span className="w-6 h-6 rounded-lg bg-indigo-50 border border-indigo-200 flex items-center justify-center shrink-0">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" className="text-indigo-500"><path fillRule="evenodd" clipRule="evenodd" d="M16.154 3.004C17.739 3.084 19 4.395 19 6V18C19 19.657 17.657 21 16 21H8C6.343 21 5 19.657 5 18V6C5 4.343 6.343 3 8 3H16L16.154 3.004ZM8 4.5C7.172 4.5 6.5 5.172 6.5 6V18C6.5 18.828 7.172 19.5 8 19.5H16C16.828 19.5 17.5 18.828 17.5 18V6C17.5 5.172 16.828 4.5 16 4.5H8Z" fill="currentColor"/></svg>
+        </span>
+        <span className="text-sm font-semibold text-[#181B19]">AI Call Center</span>
+      </div>
+
+      {/* Voice / Text pill toggle */}
+      <div className="px-4 pt-3 pb-2">
+        <div className="inline-flex items-center bg-[#F1F3F2] rounded-full p-0.5 gap-0.5 nodrag">
+          <button
+            onClick={() => setVoiceMode("voice")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${voiceMode === "voice" ? "bg-white text-[#181B19] shadow-sm" : "text-[#707B73] hover:text-[#181B19]"}`}>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path fillRule="evenodd" clipRule="evenodd" d="M1.08 5.285C1.444 3.049 2.804 1.539 4.848 1.103C6.043 0.849 7.069 1.066 7.846 1.74C8.174 2.024 9.496 3.596 9.788 4.05C10.27 4.797 10.463 5.858 10.282 6.756C10.127 7.523 9.899 7.931 8.823 9.373C8.28 10.1 7.837 10.736 7.837 10.785C7.838 10.912 8.349 11.96 8.611 12.374C9.008 12.999 9.54 13.64 10.129 14.202C10.682 14.729 11.578 15.4 11.728 15.4C11.767 15.4 12.478 15.053 13.308 14.629C14.97 13.781 15.294 13.671 16.128 13.671C17.095 13.671 18.003 14.035 18.701 14.703C19.283 15.261 20.456 16.701 20.655 17.102C21.159 18.119 21.112 19.152 20.506 20.388C19.906 21.609 18.84 22.483 17.519 22.836C16.933 22.993 15.763 23.048 15.048 22.954C12.85 22.663 10.427 21.485 8.066 19.561C7.174 18.834 5.481 17.103 4.866 16.289C2.747 13.485 1.383 10.444 1.057 7.793C0.972 7.097 0.984 5.891 1.08 5.285Z" fill="currentColor"/></svg>
             Voice Call
           </button>
-        </div>
-        <div className="p-3 space-y-1.5 bg-gray-50">
-          <div className="flex gap-2 items-center"><div className="w-8 h-1.5 bg-gray-300 rounded-full"/><div className="w-16 h-1.5 bg-gray-200 rounded-full"/><div className="w-10 h-1.5 bg-[#BBF7D0] rounded-full"/></div>
-          <div className="flex gap-2 items-center"><div className="w-12 h-1.5 bg-gray-200 rounded-full"/><div className="w-20 h-1.5 bg-gray-200 rounded-full"/></div>
-          <div className="flex gap-2 items-center"><div className="w-6 h-1.5 bg-[#FDE68A] rounded-full"/><div className="w-14 h-1.5 bg-gray-200 rounded-full"/><div className="w-8 h-1.5 bg-gray-300 rounded-full"/></div>
-          <div className="flex gap-2 items-center"><div className="w-16 h-1.5 bg-gray-200 rounded-full"/><div className="w-10 h-1.5 bg-gray-200 rounded-full"/></div>
+          <button
+            onClick={() => setVoiceMode("text")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${voiceMode === "text" ? "bg-white text-[#181B19] shadow-sm" : "text-[#707B73] hover:text-[#181B19]"}`}>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path fillRule="evenodd" clipRule="evenodd" d="M2.25 4A.75.75 0 013 3.25h18a.75.75 0 010 1.5H3A.75.75 0 012.25 4zm0 4A.75.75 0 013 7.25h18a.75.75 0 010 1.5H3A.75.75 0 012.25 8zm0 4A.75.75 0 013 11.25h12a.75.75 0 010 1.5H3a.75.75 0 01-.75-.75z" fill="currentColor"/></svg>
+            Text
+          </button>
         </div>
       </div>
-      {/* Schedule */}
-      <div className="bg-white rounded-2xl border border-gray-200 px-4 py-3 shadow-sm space-y-2">
-        <div className="flex items-center justify-between">
+
+      {/* Mini script canvas preview */}
+      <div className="mx-4 mb-4 rounded-xl bg-[#F8F9F8] border border-[#ECEEED] overflow-hidden" style={{ height: 109 }}>
+        <div className="flex flex-col gap-2 p-3">
+          {/* Simulated script node rows */}
           <div className="flex items-center gap-2">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="text-gray-500"><path fillRule="evenodd" clipRule="evenodd" d="M7.212 2.526C7.212 2.098 6.864 1.75 6.435 1.75C6.006 1.75 5.659 2.098 5.659 2.526V3.821H3.847C2.275 3.821 1 5.095 1 6.668V17.538C1 19.111 2.275 20.385 3.847 20.385H8.506C8.935 20.385 9.282 20.038 9.282 19.609C9.282 19.18 8.935 18.833 8.506 18.833H3.847C3.132 18.833 2.553 18.253 2.553 17.538V6.668C2.553 5.953 3.132 5.374 3.847 5.374H5.659V6.668C5.659 7.096 6.006 7.444 6.435 7.444C6.864 7.444 7.212 7.096 7.212 6.668V2.526Z" fill="currentColor"/></svg>
-            <span className="text-sm font-medium text-gray-800">Mon-Fri</span>
+            <div className="w-4 h-4 rounded-full bg-indigo-100 border border-indigo-200 flex items-center justify-center shrink-0">
+              <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+            </div>
+            <div className="flex gap-1.5 items-center flex-1">
+              <div className="h-1.5 bg-[#E0E7FF] rounded-full" style={{ width: 48 }} />
+              <div className="h-1.5 bg-[#D1D5DB] rounded-full" style={{ width: 64 }} />
+              <div className="h-1.5 bg-[#BBF7D0] rounded-full" style={{ width: 36 }} />
+            </div>
           </div>
-          <span className="text-sm text-gray-500">9am - 5pm</span>
+          <div className="flex items-center gap-2">
+            <div className="w-px h-3 bg-[#D1D5DB] ml-2" />
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center shrink-0">
+              <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />
+            </div>
+            <div className="flex gap-1.5 items-center flex-1">
+              <div className="h-1.5 bg-[#FDE68A] rounded-full" style={{ width: 28 }} />
+              <div className="h-1.5 bg-[#D1D5DB] rounded-full" style={{ width: 56 }} />
+              <div className="h-1.5 bg-[#D1D5DB] rounded-full" style={{ width: 32 }} />
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-px h-3 bg-[#D1D5DB] ml-2" />
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center shrink-0">
+              <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />
+            </div>
+            <div className="flex gap-1.5 items-center flex-1">
+              <div className="h-1.5 bg-[#D1D5DB] rounded-full" style={{ width: 44 }} />
+              <div className="h-1.5 bg-[#D1D5DB] rounded-full" style={{ width: 72 }} />
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="text-gray-500"><path fillRule="evenodd" clipRule="evenodd" d="M12 2.25C6.615 2.25 2.25 6.615 2.25 12C2.25 17.385 6.615 21.75 12 21.75C17.385 21.75 21.75 17.385 21.75 12C21.75 6.615 17.385 2.25 12 2.25ZM12 3.75C16.556 3.75 20.25 7.444 20.25 12C20.25 16.556 16.556 20.25 12 20.25C7.444 20.25 3.75 16.556 3.75 12C3.75 7.444 7.444 3.75 12 3.75ZM12.75 7.5C12.75 7.086 12.414 6.75 12 6.75C11.586 6.75 11.25 7.086 11.25 7.5V12C11.25 12.199 11.329 12.39 11.47 12.53L14.47 15.53C14.763 15.823 15.237 15.823 15.53 15.53C15.823 15.237 15.823 14.763 15.53 14.47L12.75 11.689V7.5Z" fill="currentColor"/></svg>
-          <span className="text-xs text-gray-500">Every 1.5 hours, total 3 attempts</span>
-        </div>
-      </div>
-      {/* Summary */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm">
-        <div className="flex items-center gap-2 mb-2">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className="text-gray-600"><path fillRule="evenodd" clipRule="evenodd" d="M16.154 3.004C17.739 3.084 19 4.395 19 6V18C19 19.657 17.657 21 16 21H8C6.343 21 5 19.657 5 18V6C5 4.343 6.343 3 8 3H16L16.154 3.004ZM8 4.5C7.172 4.5 6.5 5.172 6.5 6V18C6.5 18.828 7.172 19.5 8 19.5H16C16.828 19.5 17.5 18.828 17.5 18V6C17.5 5.172 16.828 4.5 16 4.5H8Z" fill="currentColor"/></svg>
-          <span className="text-sm font-semibold text-gray-800">Summary</span>
-        </div>
-        <p className="text-xs text-gray-500 mb-3">Collect key information from the conversation with the contact.</p>
-        <button className="w-full border border-gray-200 rounded-xl py-2 text-sm text-gray-600 flex items-center justify-center gap-2 hover:bg-gray-50 nodrag"><span className="text-gray-400">+</span> Add</button>
       </div>
     </div>
   );
@@ -222,7 +274,7 @@ function CampaignEditorInner({ onClose, onSave, nextId, availableGroups, initial
   const [scriptPanelOpen, setScriptPanelOpen] = useState(false);
   const [activeStep, setActiveStep] = useState<number | null>(null);
   const [steps, setSteps] = useState<ScriptStep[]>([
-    { id: 1, type: "step", text: "Hello, is this {{Name}} ?" },
+    { id: 1, type: "step", text: "" },
   ]);
   const nextStepId = useRef(2);
   const [scenarios, setScenarios] = useState<Scenario[]>([
