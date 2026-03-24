@@ -130,21 +130,29 @@ export default function CampaignDetailPage() {
   const threeDotsRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
 
+  // Test call panel
+  const [testCallPanelOpen, setTestCallPanelOpen] = useState(false);
+  const [testCallHistoryOpen, setTestCallHistoryOpen] = useState(true);
+
+  // Calendar filter
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [calMonth, setCalMonth] = useState(new Date().getMonth());
+  const [calYear, setCalYear] = useState(new Date().getFullYear());
+  const [activeDateFilter, setActiveDateFilter] = useState<string | null>(null);
+  const calendarRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     Promise.all([fetchCampaigns(), fetchContactsByCampaignId(id)])
       .then(([camps, ctcts]) => { setCampaign(camps.find((c) => c.id === id)); setContacts(ctcts); })
       .finally(() => setLoadingPage(false));
   }, [id]);
 
-  // Close three dots on outside click
+  // Close overlays on outside click
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (threeDotsRef.current && !threeDotsRef.current.contains(e.target as Node)) {
-        setThreeDotsOpen(false);
-      }
-      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
-        setStatusPopoverAttemptIdx(null);
-      }
+      if (threeDotsRef.current && !threeDotsRef.current.contains(e.target as Node)) setThreeDotsOpen(false);
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) setStatusPopoverAttemptIdx(null);
+      if (calendarRef.current && !calendarRef.current.contains(e.target as Node)) setCalendarOpen(false);
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
@@ -280,7 +288,8 @@ export default function CampaignDetailPage() {
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium border border-[var(--border)] rounded-lg text-[var(--text-2)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-1)] transition-colors">
               <Pencil size={13} /> Edit
             </button>
-            <button className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium border border-[var(--border)] rounded-lg text-[var(--text-2)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-1)] transition-colors">
+            <button onClick={() => setTestCallPanelOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium border border-[var(--border)] rounded-lg text-[var(--text-2)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-1)] transition-colors">
               <PhoneCall size={13} /> Test Call
             </button>
             <button onClick={() => setShowAdd(true)}
@@ -345,13 +354,80 @@ export default function CampaignDetailPage() {
       <div className="bg-[var(--bg-app)] rounded-xl border border-[var(--border)] overflow-hidden w-full">
         {/* Toolbar */}
         <div className="flex items-center gap-3 p-4 border-b border-[var(--border)] bg-[var(--bg-card)]">
-          <div className="relative flex-1">
+          <div className="relative flex-1" ref={calendarRef}>
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-3)]" />
             <input type="text" placeholder="Search Contacts" value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
               className="w-full pl-9 pr-10 py-2 text-sm bg-[var(--bg-app)] border border-[var(--border)] rounded-lg placeholder-[var(--text-3)] text-[var(--text-1)] focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all"
             />
-            <Calendar size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-3)] cursor-pointer" />
+            <button onClick={() => setCalendarOpen((v) => !v)}
+              className={`absolute right-3 top-1/2 -translate-y-1/2 transition-colors ${calendarOpen ? "text-blue-500" : "text-[var(--text-3)] hover:text-[var(--text-2)]"}`}>
+              <Calendar size={14} />
+            </button>
+            {/* Calendar dropdown */}
+            {calendarOpen && (
+              <div className="absolute top-full left-0 right-0 sm:right-auto mt-2 z-50 bg-white border border-gray-200 rounded-2xl shadow-2xl flex overflow-hidden min-w-[500px]">
+                {/* Quick filters */}
+                <div className="w-44 border-r border-gray-100 py-3 shrink-0">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-4 mb-2">Filter by last attempt</p>
+                  {["Today","Yesterday","Last 7 Days","Last 30 Days","Last 90 Days","Last 12 Months","This Week","This Month"].map((opt) => (
+                    <button key={opt} onClick={() => { setActiveDateFilter(activeDateFilter === opt ? null : opt); }}
+                      className={`w-full text-left px-4 py-2 text-sm transition-colors ${activeDateFilter === opt ? "text-blue-600 font-medium bg-blue-50" : "text-gray-700 hover:bg-gray-50"}`}>
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+                {/* Calendar */}
+                <div className="p-4 flex-1">
+                  {/* Month/Year nav */}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-1">
+                      <select value={calMonth} onChange={(e) => setCalMonth(Number(e.target.value))}
+                        className="text-sm font-semibold text-gray-800 bg-transparent border-none outline-none cursor-pointer pr-1">
+                        {["January","February","March","April","May","June","July","August","September","October","November","December"].map((m,i) => (
+                          <option key={m} value={i}>{m}</option>
+                        ))}
+                      </select>
+                      <select value={calYear} onChange={(e) => setCalYear(Number(e.target.value))}
+                        className="text-sm font-semibold text-gray-800 bg-transparent border-none outline-none cursor-pointer">
+                        {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map((y) => (
+                          <option key={y} value={y}>{y}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => { const d = new Date(calYear, calMonth - 1); setCalMonth(d.getMonth()); setCalYear(d.getFullYear()); }}
+                        className="p-1 rounded hover:bg-gray-100 text-gray-600 transition-colors">
+                        <ChevronLeft size={15} />
+                      </button>
+                      <button onClick={() => { const d = new Date(calYear, calMonth + 1); setCalMonth(d.getMonth()); setCalYear(d.getFullYear()); }}
+                        className="p-1 rounded hover:bg-gray-100 text-gray-600 transition-colors">
+                        <ChevronRight size={15} />
+                      </button>
+                    </div>
+                  </div>
+                  {/* Day grid */}
+                  <div className="grid grid-cols-7 gap-y-1">
+                    {["Su","Mo","Tu","We","Th","Fr","Sa"].map((d) => (
+                      <div key={d} className="text-center text-[11px] font-semibold text-gray-400 pb-1">{d}</div>
+                    ))}
+                    {Array.from({ length: new Date(calYear, calMonth, 1).getDay() }, (_, i) => (
+                      <div key={`empty-${i}`} />
+                    ))}
+                    {Array.from({ length: new Date(calYear, calMonth + 1, 0).getDate() }, (_, i) => {
+                      const day = i + 1;
+                      const isToday = day === new Date().getDate() && calMonth === new Date().getMonth() && calYear === new Date().getFullYear();
+                      return (
+                        <button key={day}
+                          className={`h-7 w-7 mx-auto flex items-center justify-center rounded-full text-xs transition-colors ${isToday ? "bg-blue-600 text-white font-semibold" : "text-gray-700 hover:bg-gray-100"}`}>
+                          {day}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
           <button onClick={() => exportToCSV(filtered, `${campaign.name}-contacts.csv`)}
             className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium border border-[var(--border)] rounded-lg text-[var(--text-2)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-1)] transition-colors whitespace-nowrap shrink-0">
@@ -606,6 +682,80 @@ export default function CampaignDetailPage() {
             </div>
       </>)}
           </div>
+
+      {/* ── Test Call slide panel ── */}
+      <div onClick={() => setTestCallPanelOpen(false)}
+        className={`fixed inset-0 z-40 bg-black/30 transition-opacity duration-300 ${testCallPanelOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`} />
+      <div className={`fixed top-0 right-0 h-screen z-50 w-full sm:w-[420px] flex flex-col shadow-2xl transform transition-transform duration-300 ease-in-out overflow-hidden ${testCallPanelOpen ? "translate-x-0" : "translate-x-full"}`}>
+        {/* Dark top section */}
+        <div className="bg-[#1A1A1A] flex flex-col items-center justify-center pt-10 pb-8 relative shrink-0">
+          <button onClick={() => setTestCallPanelOpen(false)}
+            className="absolute top-4 right-4 p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors">
+            <X size={18} />
+          </button>
+          <div className="w-16 h-16 rounded-full bg-white/10 border border-white/20 flex items-center justify-center mb-5">
+            <PhoneCall size={24} className="text-emerald-400" />
+          </div>
+          <button className="bg-white text-gray-800 font-medium text-sm px-6 py-2.5 rounded-full shadow-lg hover:bg-gray-100 transition-colors">
+            Initiate a new test call
+          </button>
+        </div>
+        {/* History section */}
+        <div className="flex-1 bg-white overflow-y-auto" style={{ scrollbarWidth: "none" }}>
+          <div className="px-5 py-4">
+            <button onClick={() => setTestCallHistoryOpen((v) => !v)}
+              className="w-full flex items-center justify-between mb-4">
+              <span className="text-sm font-semibold text-gray-800">Test call history</span>
+              <ChevronDown size={16} className="text-gray-400 transition-transform" style={{ transform: testCallHistoryOpen ? "rotate(180deg)" : "rotate(0deg)" }} />
+            </button>
+            {testCallHistoryOpen && (
+              <div className="flex flex-col">
+                {[
+                  { date: "Feb 23", time: "11:09 pm", person: "Tetiana", phone: "+1 978 679 2733", duration: "00:44", result: "Sent SMS" },
+                  { date: "Feb 23", time: "11:08 pm", person: "Tetiana", phone: "+1 978 679 2733", duration: "00:50", result: "Sent SMS" },
+                  { date: "Feb 23", time: "11:07 pm", person: "Tetiana", phone: "+1 978 679 2733", duration: "00:41", result: "Call later" },
+                  { date: "Feb 23", time: "10:39 pm", person: "Ernie",   phone: "+63 977 760 9021", duration: "03:01", result: "Sent SMS" },
+                  { date: "Feb 23", time: "10:36 pm", person: "Ernie",   phone: "+63 977 760 9021", duration: "",      result: "No answer" },
+                  { date: "Feb 23", time: "07:41 pm", person: "Tetiana", phone: "+1 978 679 2733", duration: "00:48", result: "Interested" },
+                  { date: "Feb 23", time: "07:39 pm", person: "Tetiana", phone: "+1 978 679 2733", duration: "00:49", result: "Interested" },
+                  { date: "Feb 12", time: "10:27 pm", person: "Tetiana", phone: "+1 978 679 2733", duration: "01:16", result: "Interested" },
+                ].map((item, i, arr) => {
+                  const isGreen = item.result === "Sent SMS" || item.result === "Interested";
+                  const badgeClass = isGreen
+                    ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
+                    : item.result === "Call later"
+                      ? "bg-orange-50 text-orange-500 border border-orange-200"
+                      : "bg-amber-50 text-amber-600 border border-amber-200";
+                  return (
+                    <div key={i} className={`flex items-center gap-3 py-3 ${i < arr.length - 1 ? "border-b border-gray-100" : ""}`}>
+                      <div className={`w-3.5 h-3.5 rounded-full border-2 shrink-0 flex items-center justify-center ${i === 0 ? "border-gray-700" : "border-gray-300"}`}>
+                        {i === 0 && <div className="w-1.5 h-1.5 rounded-full bg-gray-700" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-800">{item.date} <span className="text-gray-400 font-normal">({item.time})</span></p>
+                        <p className="text-xs text-gray-400 mt-0.5">{item.person} {item.phone}</p>
+                      </div>
+                      {item.duration ? (
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <svg width="18" height="14" viewBox="0 0 18 14" fill="none">
+                            <rect x="0" y="4" width="2" height="6" rx="1" fill="#9CA3AF"/>
+                            <rect x="4" y="2" width="2" height="10" rx="1" fill="#9CA3AF"/>
+                            <rect x="8" y="0" width="2" height="14" rx="1" fill="#9CA3AF"/>
+                            <rect x="12" y="2" width="2" height="10" rx="1" fill="#9CA3AF"/>
+                            <rect x="16" y="4" width="2" height="6" rx="1" fill="#9CA3AF"/>
+                          </svg>
+                          <span className="text-xs text-gray-500 font-mono">{item.duration}</span>
+                        </div>
+                      ) : <div className="w-16" />}
+                      <span className={`text-xs font-medium px-2.5 py-1 rounded-full shrink-0 ${badgeClass}`}>{item.result}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Edit Campaign Modal */}
       {showEdit && (
