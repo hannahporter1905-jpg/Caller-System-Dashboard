@@ -211,7 +211,7 @@ export default function CampaignsPage() {
           </div>
         </div>
         <button
-          onClick={() => setShowNewModal(true)}
+          onClick={() => { setShowNewModal(true); }}
           className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-full transition-colors shadow-md shadow-blue-600/20 flex-shrink-0"
         >
           <Plus size={15} />
@@ -318,6 +318,7 @@ export default function CampaignsPage() {
         </div>
       </div>
 
+      {/* Full campaign editor */}
       {showNewModal && (
         <CampaignEditor
           onClose={() => setShowNewModal(false)}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -52,6 +52,7 @@ interface Props {
   onSave: (campaign: Campaign) => void;
   nextId: number;
   availableGroups: Group[];
+  initialName?: string;
 }
 
 type Tab = "Script" | "Scenarios" | "Workflow";
@@ -214,9 +215,9 @@ const STEP_CONFIG: Record<StepType, { label: string; color: string; placeholder:
 
 // ── Main component ─────────────────────────────────────────────────────────
 
-function CampaignEditorInner({ onClose, onSave, nextId, availableGroups }: Props) {
+function CampaignEditorInner({ onClose, onSave, nextId, availableGroups, initialName }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("Script");
-  const [campaignName, setCampaignName] = useState("New campaign");
+  const [campaignName, setCampaignName] = useState(initialName?.trim() || "New campaign");
   const [editingName, setEditingName] = useState(false);
   const [scriptPanelOpen, setScriptPanelOpen] = useState(false);
   const [activeStep, setActiveStep] = useState<number | null>(null);
@@ -234,28 +235,62 @@ function CampaignEditorInner({ onClose, onSave, nextId, availableGroups }: Props
   const [generalSettingsOpen, setGeneralSettingsOpen] = useState(false);
   const [useCase, setUseCase] = useState("Not specific");
   const [useCaseOpen, setUseCaseOpen] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState<Group>(() => availableGroups.find(g => g !== "Archived") ?? "RND");
+  const [selectedStatus, setSelectedStatus] = useState<"Active" | "Paused" | "Stopped">("Active");
+  const [groupOpen, setGroupOpen] = useState(false);
+  const [statusOpen, setStatusOpen] = useState(false);
   const [callType, setCallType] = useState<"outgoing" | "incoming">("outgoing");
   const [campaignInstructions, setCampaignInstructions] = useState("");
+  const [instructionsOpen, setInstructionsOpen] = useState(false);
+  const [techSettingsOpen, setTechSettingsOpen] = useState(false);
+  const [recordCalls, setRecordCalls] = useState(true);
+  const [checkFederalDNC, setCheckFederalDNC] = useState(false);
+  const [enableLocalDNC, setEnableLocalDNC] = useState(false);
+  const [continueAfterCallLater, setContinueAfterCallLater] = useState(true);
+  const [sensitiveContent, setSensitiveContent] = useState(false);
+  const [allowDuplicates, setAllowDuplicates] = useState(false);
+  const [maxDuration, setMaxDuration] = useState("");
+  const [showExamples, setShowExamples] = useState(false);
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<ScriptNodeData>>(initialNodes);
-  const [edges, , onEdgesChange] = useEdgesState(initialEdges);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [wfNodes, , onWfNodesChange] = useNodesState<Node<WfNodeData>>(initialWorkflowNodes);
   const [wfEdges, , onWfEdgesChange] = useEdgesState(initialWorkflowEdges);
 
   const openScriptPanel = useCallback(() => {
     setScriptPanelOpen(true);
-    setNodes((nds) => nds.map((n) => n.id === "intro" ? { ...n, data: { ...n.data, selected: true } } : n));
   }, []);
 
-  const initRef = useRef(false);
-  if (!initRef.current) {
-    initRef.current = true;
-    initialNodes[1].data.onClick = openScriptPanel;
-  }
+  // Sync steps → canvas nodes so each step appears as a connected node
+  useEffect(() => {
+    const newNodes: Node<ScriptNodeData>[] = [
+      { id: "start", type: "startNode", position: { x: 0, y: 0 }, data: { label: "Start", isStart: true }, draggable: false, selectable: false },
+      ...steps.map((step, idx) => {
+        const nodeId = idx === 0 ? "intro" : `step-node-${step.id}`;
+        const rawLabel = step.text.replace(/\{\{[^}]+\}\}/g, "…").trim();
+        const label = rawLabel ? (rawLabel.length > 28 ? rawLabel.substring(0, 28) + "…" : rawLabel) : (idx === 0 ? "Intro Script" : STEP_CONFIG[step.type].label);
+        return {
+          id: nodeId,
+          type: "scriptNode" as const,
+          position: { x: -50, y: 80 + idx * 130 },
+          data: { label, selected: activeStep === step.id },
+        };
+      }),
+    ];
+    const nodeIds = ["start", ...steps.map((s, i) => i === 0 ? "intro" : `step-node-${s.id}`)];
+    const newEdges: Edge[] = nodeIds.slice(0, -1).map((id, i) => ({
+      id: `e-${id}-${nodeIds[i + 1]}`,
+      source: id,
+      target: nodeIds[i + 1],
+      style: { stroke: "#D1D5DB", strokeWidth: 1.5 },
+    }));
+    setNodes(newNodes);
+    setEdges(newEdges);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [steps, activeStep]);
 
   function closeScriptPanel() {
     setScriptPanelOpen(false);
     setActiveStep(null);
-    setNodes((nds) => nds.map((n) => n.id === "intro" ? { ...n, data: { ...n.data, selected: false } } : n));
   }
 
   function addStep(type: StepType) {
@@ -278,6 +313,15 @@ function CampaignEditorInner({ onClose, onSave, nextId, availableGroups }: Props
     setScenarios((prev) => [...prev, { id, question: "", steps: [{ id: stepId, type: "step", text: "" }] }]);
     setActiveScenario(id);
     setActiveScenarioStep(null);
+  }
+
+  function addScenarioWithQuestion(question: string) {
+    const id = nextScenarioId.current++;
+    const stepId = nextScenarioStepId.current++;
+    setScenarios((prev) => [...prev, { id, question, steps: [{ id: stepId, type: "step", text: "" }] }]);
+    setActiveScenario(id);
+    setActiveScenarioStep(null);
+    setShowExamples(false);
   }
 
   function updateScenarioQuestion(id: number, question: string) {
@@ -309,7 +353,8 @@ function CampaignEditorInner({ onClose, onSave, nextId, availableGroups }: Props
   }
 
   function handleSave() {
-    onSave({ id: nextId, name: campaignName.trim() || "New campaign", totalContacts: 0, totalCalls: 0, connectRate: "0%", connectCount: 0, successRate: "0%", successCount: 0, status: "Active", group: availableGroups[0] ?? "RND" });
+    const name = campaignName.trim() || "New campaign";
+    onSave({ id: nextId, name, totalContacts: 0, totalCalls: 0, connectRate: "0%", connectCount: 0, successRate: "0%", successCount: 0, status: selectedStatus, group: selectedGroup });
   }
 
   function renderStepText(text: string) {
@@ -381,7 +426,7 @@ function CampaignEditorInner({ onClose, onSave, nextId, availableGroups }: Props
           <>
             {/* Scenarios list */}
             <div className="flex-1 flex flex-col overflow-y-auto" style={{ background: "#F5F5F5" }}>
-              <div className="flex flex-col items-center px-4 pt-10 pb-24 min-h-full">
+              <div className="flex flex-col items-center px-4 pt-10 pb-6 min-h-full">
                 {/* Illustration */}
                 <div className="mb-5">
                   <svg width="180" height="130" viewBox="0 0 180 130" fill="none">
@@ -423,12 +468,53 @@ function CampaignEditorInner({ onClose, onSave, nextId, availableGroups }: Props
                   </div>
                 </div>
               </div>
-              {/* Show examples footer */}
-              <div className="sticky bottom-0 flex justify-center pb-5 pt-4 pointer-events-none">
-                <button className="pointer-events-auto flex flex-col items-center gap-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-widest hover:text-gray-600">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 4L4 12H9V20H15V12H20L12 4Z" fill="currentColor"/></svg>
-                  Show Scenarios Examples
+              {/* Show/Hide examples toggle */}
+              <div className="flex flex-col items-center pb-6 pt-4 px-4">
+                <button
+                  onClick={() => setShowExamples((v) => !v)}
+                  className="flex flex-col items-center gap-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-widest hover:text-gray-600"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className={`transition-transform ${showExamples ? "rotate-180" : ""}`}>
+                    <path d="M12 4L4 12H9V20H15V12H20L12 4Z" fill="currentColor"/>
+                  </svg>
+                  {showExamples ? "Hide Scenarios Examples" : "Show Scenarios Examples"}
                 </button>
+
+                {showExamples && (() => {
+                  const EXAMPLES = [
+                    "If the prospect inquires about pricing",
+                    "If the prospect asks for a callback at a different time",
+                    "If the prospect doesn't want to book a meeting",
+                    "If the prospect asks for the location of the company",
+                    "If the prospect asks how long the company has been in business",
+                    "If the prospect asks for contact information",
+                    "If the prospect asks how the assistant got their number",
+                    "If the prospect asks if you are a robot",
+                    "If the prospect asks about integrations",
+                    "If the prospect asks about the industries we serve",
+                    "If the prospect wants to talk with a real person",
+                    "If the prospect asks about products and services",
+                  ];
+                  return (
+                    <div className="mt-4 w-full max-w-3xl grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {EXAMPLES.map((ex) => {
+                        const alreadyAdded = scenarios.some(s => s.question === ex);
+                        return (
+                          <div key={ex} className="flex items-center justify-between gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-left hover:border-gray-300 transition-all">
+                            <span className="text-xs text-gray-700 leading-snug">{ex}</span>
+                            <button
+                              onClick={() => !alreadyAdded && addScenarioWithQuestion(ex)}
+                              disabled={alreadyAdded}
+                              className={`shrink-0 w-6 h-6 rounded-full border flex items-center justify-center text-sm font-medium transition-colors ${alreadyAdded ? "border-green-300 text-green-500 cursor-default" : "border-gray-300 text-gray-500 hover:border-[#4F46E5] hover:text-[#4F46E5] hover:bg-[#F5F3FF]"}`}
+                            >
+                              {alreadyAdded ? "✓" : "+"}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
 
@@ -502,10 +588,17 @@ function CampaignEditorInner({ onClose, onSave, nextId, availableGroups }: Props
         {activeTab === "Script" && (<>
         <div className="flex-1 relative" style={{ background: "#F5F5F5" }}>
           <ReactFlow
-            nodes={nodes.map((n) => n.id === "intro" ? { ...n, data: { ...n.data, onClick: openScriptPanel } } : n)}
+            nodes={nodes}
             edges={edges}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
+            onNodeClick={(_, node) => {
+              if (node.type === "scriptNode") {
+                openScriptPanel();
+                const stepIdx = node.id === "intro" ? 0 : steps.findIndex(s => `step-node-${s.id}` === node.id);
+                if (stepIdx >= 0) setActiveStep(steps[stepIdx].id);
+              }
+            }}
             nodeTypes={nodeTypes}
             fitView fitViewOptions={{ padding: 0.5 }}
             minZoom={0.25} maxZoom={2}
@@ -624,74 +717,208 @@ function CampaignEditorInner({ onClose, onSave, nextId, availableGroups }: Props
 
       {/* ── General Settings Modal ── */}
       {generalSettingsOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => { setGeneralSettingsOpen(false); setUseCaseOpen(false); }}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: "none" }} onClick={(e) => e.stopPropagation()}>
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
-              <div className="flex items-center gap-3">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className="text-gray-700"><path fillRule="evenodd" clipRule="evenodd" d="M11.13 1.037C10.637 1.108 10.107 1.223 9.631 1.363L9.426 1.423L9.224 1.783C8.905 2.35 8.349 3.481 8.151 3.968C7.989 4.363 7.95 4.432 7.799 4.584C7.557 4.829 7.361 4.899 6.972 4.879C6.812 4.87 6.474 4.835 6.221 4.8C5.747 4.735 4.812 4.661 4.026 4.626L3.576 4.606L3.172 5C2.95 5.217 2.657 5.532 2.521 5.701C1.809 6.586 1.268 7.695 1.021 8.777C0.993 8.897 1.991 10.304 2.713 11.162C3.086 11.606 3.156 11.759 3.136 12.082C3.118 12.363 3.062 12.468 2.677 12.931C2.145 13.57 1.576 14.338 1.112 15.043L1 15.212L1.074 15.488C1.462 16.94 2.281 18.279 3.373 19.248L3.587 19.438L4.108 19.417C4.864 19.388 5.743 19.314 6.38 19.228C6.686 19.187 7.006 19.153 7.091 19.153C7.386 19.153 7.752 19.345 7.908 19.581C7.952 19.648 8.089 19.936 8.212 20.222C8.447 20.77 8.967 21.812 9.262 22.328L9.437 22.635L9.884 22.747C10.648 22.938 11.164 23 11.995 23C12.906 23 13.642 22.902 14.371 22.685L14.588 22.62L14.805 22.229C15.286 21.36 15.621 20.668 15.959 19.85C16.127 19.444 16.462 19.189 16.864 19.161C16.981 19.153 17.247 19.174 17.508 19.211C18.239 19.318 19.651 19.429 20.262 19.429L20.458 19.429L20.936 18.946C21.736 18.137 22.244 17.374 22.637 16.394C22.784 16.028 22.99 15.353 22.99 15.239C22.99 15.122 22.029 13.768 21.461 13.085C20.905 12.415 20.876 12.362 20.877 12.008C20.877 11.724 20.962 11.563 21.354 11.097C21.751 10.624 22.311 9.874 22.707 9.284L23 8.847L22.961 8.67C22.857 8.193 22.555 7.395 22.296 6.913C22.112 6.569 21.762 6.037 21.519 5.732C21.293 5.448 20.848 4.98 20.594 4.759L20.418 4.606L19.705 4.641C18.881 4.681 18.162 4.743 17.554 4.828C16.783 4.936 16.546 4.896 16.234 4.602C16.08 4.457 16.047 4.398 15.837 3.909C15.559 3.263 15.228 2.589 14.859 1.92L14.584 1.422L14.415 1.372C14.053 1.266 13.555 1.149 13.189 1.083C12.699 0.996 11.593 0.972 11.13 1.037ZM12 8C9.791 8 8 9.791 8 12C8 14.209 9.791 16 12 16C14.209 16 16 14.209 16 12C16 9.791 14.209 8 12 8ZM12 9.5C13.381 9.5 14.5 10.619 14.5 12C14.5 13.381 13.381 14.5 12 14.5C10.619 14.5 9.5 13.381 9.5 12C9.5 10.619 10.619 9.5 12 9.5Z" fill="currentColor"/></svg>
-                <h2 className="text-lg font-semibold text-gray-900">General Settings</h2>
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center overflow-y-auto" style={{ pointerEvents: "auto" }} onClick={() => { setGeneralSettingsOpen(false); setUseCaseOpen(false); setGroupOpen(false); setStatusOpen(false); }}>
+          <div className="relative bg-white shadow-[0_24px_48px_-12px_rgba(0,0,0,0.18)] rounded-2xl flex flex-col max-w-[700px] w-full mx-4 max-h-[95vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+
+            {/* ── Header ── */}
+            <div className="sticky top-0 bg-white z-10 shadow-sm">
+              <div className="flex justify-between items-center px-6 py-4">
+                <div className="flex items-center gap-4">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path fillRule="evenodd" clipRule="evenodd" d="M11.13 1.037C10.637 1.108 10.107 1.223 9.631 1.363L9.426 1.423L9.224 1.783C8.905 2.35 8.349 3.481 8.151 3.968C7.989 4.363 7.95 4.432 7.799 4.584C7.557 4.829 7.361 4.899 6.972 4.879C6.812 4.87 6.474 4.835 6.221 4.8C5.747 4.735 4.812 4.661 4.026 4.626L3.576 4.606L3.172 5C2.95 5.217 2.657 5.532 2.521 5.701C1.809 6.586 1.268 7.695 1.021 8.777C0.993 8.897 1.991 10.304 2.713 11.162C3.086 11.606 3.156 11.759 3.136 12.082C3.118 12.363 3.062 12.468 2.677 12.931C2.145 13.57 1.576 14.338 1.112 15.043L1 15.212L1.074 15.488C1.462 16.94 2.281 18.279 3.373 19.248L3.587 19.438L4.108 19.417C4.864 19.388 5.743 19.314 6.38 19.228C6.686 19.187 7.006 19.153 7.091 19.153C7.386 19.153 7.752 19.345 7.908 19.581C7.952 19.648 8.089 19.936 8.212 20.222C8.447 20.77 8.967 21.812 9.262 22.328L9.437 22.635L9.884 22.747C10.648 22.938 11.164 23 11.995 23C12.906 23 13.642 22.902 14.371 22.685L14.588 22.62L14.805 22.229C15.286 21.36 15.621 20.668 15.959 19.85C16.127 19.444 16.462 19.189 16.864 19.161C16.981 19.153 17.247 19.174 17.508 19.211C18.239 19.318 19.651 19.429 20.262 19.429H20.458L20.936 18.946C21.736 18.137 22.244 17.374 22.637 16.394C22.784 16.028 22.99 15.353 22.99 15.239C22.99 15.122 22.029 13.768 21.461 13.085C20.905 12.415 20.876 12.362 20.877 12.008C20.877 11.724 20.962 11.563 21.354 11.097C21.751 10.624 22.311 9.874 22.707 9.284L23 8.847L22.961 8.67C22.857 8.193 22.555 7.395 22.296 6.913C22.112 6.569 21.762 6.037 21.519 5.732C21.293 5.448 20.848 4.98 20.594 4.759L20.418 4.606L19.705 4.641C18.881 4.681 18.162 4.743 17.554 4.828C16.783 4.936 16.546 4.896 16.234 4.602C16.08 4.457 16.047 4.398 15.837 3.909C15.559 3.263 15.228 2.589 14.859 1.92L14.584 1.422L14.415 1.372C14.053 1.266 13.555 1.149 13.189 1.083C12.699 0.996 11.593 0.972 11.13 1.037ZM12 8C9.791 8 8 9.791 8 12C8 14.209 9.791 16 12 16C14.209 16 16 14.209 16 12C16 9.791 14.209 8 12 8ZM12 9.5C13.381 9.5 14.5 10.619 14.5 12C14.5 13.381 13.381 14.5 12 14.5C10.619 14.5 9.5 13.381 9.5 12C9.5 10.619 10.619 9.5 12 9.5Z" fill="#707B73"/></svg>
+                  <span className="text-[#181b18] text-base font-semibold">General Settings</span>
+                </div>
+                <button onClick={() => setGeneralSettingsOpen(false)} className="flex items-center justify-center p-2 rounded-lg hover:bg-neutral-50">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path fillRule="evenodd" clipRule="evenodd" d="M20.485 3.515a.75.75 0 00-1.06 0L12 10.94 4.575 3.515a.75.75 0 10-1.06 1.06L10.94 12l-7.425 7.425a.75.75 0 101.06 1.06L12 13.06l7.425 7.425a.75.75 0 101.06-1.06L13.06 12l7.425-7.425a.75.75 0 000-1.06z" fill="#707B73"/></svg>
+                </button>
               </div>
-              <button onClick={() => setGeneralSettingsOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path fillRule="evenodd" clipRule="evenodd" d="M5.47 5.47a.75.75 0 011.06 0L12 10.94l5.47-5.47a.75.75 0 111.06 1.06L13.06 12l5.47 5.47a.75.75 0 11-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 01-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 010-1.06z" fill="currentColor"/></svg>
-              </button>
+              <div className="w-full h-px bg-[#E4E7E5]" />
             </div>
 
-            <div className="px-6 py-5 space-y-4">
-              {/* Campaign name */}
-              <div className="border border-gray-200 rounded-xl px-4 py-3 focus-within:border-[#4F46E5] focus-within:ring-1 focus-within:ring-[#4F46E5] transition-all">
-                <label className="block text-xs text-gray-400 mb-1">Campaign name</label>
-                <input value={campaignName} onChange={(e) => setCampaignName(e.target.value)} className="w-full text-base font-medium text-gray-900 bg-transparent outline-none" placeholder="New campaign" />
+            {/* ── Scrollable body ── */}
+            <div className="flex-grow overflow-y-auto p-6 flex flex-col gap-6">
+
+              {/* Campaign name – floating label */}
+              <div className="relative w-full">
+                <div className="overflow-auto bg-[#00000005] hover:bg-[#0000000A] transition-colors border border-[#00000014] hover:border-[#00000029] rounded-2xl">
+                  <div className="relative w-full">
+                    <input
+                      value={campaignName}
+                      onChange={(e) => setCampaignName(e.target.value)}
+                      placeholder=" "
+                      className="peer resize-none w-full block text-base text-black bg-transparent focus:outline-none focus:ring-0 caret-[#3655E8] h-14 pl-4 pr-4 pb-2 pt-6"
+                    />
+                    <label className="absolute text-base font-normal text-[#00000066] duration-300 transform -translate-y-3 scale-75 origin-[0] start-4 top-4 peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-3 peer-focus:text-[#3655E8] pointer-events-none">
+                      Campaign name
+                    </label>
+                  </div>
+                </div>
               </div>
 
               {/* Use case */}
-              <div className="relative">
-                <button onClick={() => setUseCaseOpen(!useCaseOpen)} className={`w-full border rounded-xl px-4 py-3 flex items-center justify-between transition-all ${useCaseOpen ? "border-[#4F46E5] ring-1 ring-[#4F46E5]" : "border-gray-200 hover:border-gray-300"}`}>
-                  <div className="text-left">
-                    <p className="text-xs text-gray-400">Use case <span className="text-gray-300">(optional)</span></p>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-700">
-                    <span>{useCase}</span>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className={`transition-transform ${useCaseOpen ? "rotate-180" : ""}`}><path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  </div>
-                </button>
+              <div className="relative w-full">
+                <div className="w-full inline-flex flex-col bg-transparent rounded-2xl outline outline-1 outline-offset-[-1px] outline-[rgba(0,0,0,0.1)] hover:outline-[rgba(0,0,0,0.2)] transition-all">
+                  <button onClick={() => { setUseCaseOpen(!useCaseOpen); setGroupOpen(false); setStatusOpen(false); }} className="h-14 px-4 py-2 flex items-center gap-2 cursor-pointer">
+                    <div className="flex-1 flex items-center justify-between">
+                      <div className="flex items-center gap-0.5">
+                        <span className="text-zinc-900 text-base font-normal">Use case</span>
+                        <span className="text-neutral-400 text-base font-normal">(optional)</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-neutral-500 text-base">{useCase}</span>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ transform: useCaseOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 200ms ease-in-out" }}><path fillRule="evenodd" clipRule="evenodd" d="M3.70083 6.72323C3.37466 6.86581 3.2364 7.29113 3.40825 7.62366C3.55749 7.91246 9.65328 14.1052 9.8324 14.1499C9.92172 14.1722 10.0678 14.1722 10.1571 14.1499C10.3362 14.1052 16.432 7.91246 16.5812 7.62366C16.7261 7.34347 16.6887 7.10203 16.4651 6.87259C16.3067 6.71015 16.2166 6.66666 16.0385 6.66666C15.819 6.66666 15.7288 6.75254 12.9034 9.64918L9.99415 12.6318L7.11463 9.67783C4.60089 7.09919 4.20907 6.72038 4.03031 6.69628C3.91767 6.68113 3.76943 6.69325 3.70083 6.72323Z" fill="#737373"/></svg>
+                      </div>
+                    </div>
+                  </button>
+                </div>
                 {useCaseOpen && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-10 overflow-hidden">
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-[#E4E7E5] rounded-2xl shadow-lg z-20 overflow-hidden">
                     {["Not specific", "Cold Outreach", "Inbound", "Pre-qualification", "Event Confirmation", "Lead Revival", "Welcome & Onboarding"].map((opt) => (
-                      <button key={opt} onClick={() => { setUseCase(opt); setUseCaseOpen(false); }} className={`w-full px-4 py-3 text-sm text-left hover:bg-gray-50 flex items-center gap-3 ${useCase === opt ? "text-[#4F46E5] font-medium" : "text-gray-700"}`}>
-                        {opt}
-                      </button>
+                      <button key={opt} onClick={() => { setUseCase(opt); setUseCaseOpen(false); }} className={`w-full px-4 py-3 text-sm text-left hover:bg-gray-50 ${useCase === opt ? "text-[#3655E8] font-medium" : "text-zinc-900"}`}>{opt}</button>
                     ))}
                   </div>
                 )}
               </div>
 
-              {/* Call type cards */}
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { key: "outgoing", label: "Outgoing", desc: "Start the campaign by sending messages or making calls to your contacts.", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path fillRule="evenodd" clipRule="evenodd" d="M8.61 6C8.61 5.586 8.946 5.25 9.36 5.25H18C18.414 5.25 18.75 5.586 18.75 6V14.64C18.75 15.054 18.414 15.39 18 15.39C17.586 15.39 17.25 15.054 17.25 14.64V7.811L6.53 18.53C6.237 18.823 5.763 18.823 5.47 18.53C5.177 18.237 5.177 17.763 5.47 17.47L16.189 6.75H9.36C8.946 6.75 8.61 6.414 8.61 6Z" fill="currentColor"/></svg> },
-                  { key: "incoming", label: "Incoming", desc: "Handle and respond to incoming calls from new or existing contacts.", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path fillRule="evenodd" clipRule="evenodd" d="M15.39 9.39C15.39 9.804 15.054 10.14 14.64 10.14H5.811L16.53 20.859C16.823 21.152 16.823 21.626 16.53 21.919C16.237 22.212 15.763 22.212 15.47 21.919L4.75 11.2V18.03C4.75 18.444 4.414 18.78 4 18.78C3.586 18.78 3.25 18.444 3.25 18.03V9.39C3.25 8.976 3.586 8.64 4 8.64H14.64C15.054 8.64 15.39 8.976 15.39 9.39Z" fill="currentColor"/></svg> },
-                ].map(({ key, label, desc, icon }) => (
-                  <button key={key} onClick={() => setCallType(key as "outgoing" | "incoming")} className={`relative rounded-xl border-2 p-4 text-left transition-all ${callType === key ? "border-[#4F46E5] bg-[#FAFBFF]" : "border-gray-200 hover:border-gray-300 bg-white"}`}>
-                    <div className="flex items-start justify-between mb-3">
-                      <span className="text-gray-700">{icon}</span>
-                      {callType === key && (
-                        <div className="w-5 h-5 rounded-md bg-[#4F46E5] flex items-center justify-center">
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              {/* Outgoing / Incoming */}
+              <div className="flex gap-3">
+                {([
+                  { key: "outgoing", label: "Outgoing", desc: "Start the campaign by sending messages or making calls to your contacts.", icon: <path fillRule="evenodd" clipRule="evenodd" d="M8.61 6C8.61 5.586 8.946 5.25 9.36 5.25H18C18.414 5.25 18.75 5.586 18.75 6V14.64C18.75 15.054 18.414 15.39 18 15.39C17.586 15.39 17.25 15.054 17.25 14.64V7.811L6.53 18.53C6.237 18.823 5.763 18.823 5.47 18.53C5.177 18.237 5.177 17.763 5.47 17.47L16.189 6.75H9.36C8.946 6.75 8.61 6.414 8.61 6Z" fill="black"/> },
+                  { key: "incoming", label: "Incoming", desc: "Handle incoming calls, callbacks, or new messages from your contacts.", icon: <path fillRule="evenodd" clipRule="evenodd" d="M15.39 18C15.39 18.414 15.054 18.75 14.64 18.75L6 18.75C5.586 18.75 5.25 18.414 5.25 18L5.25 9.36C5.25 8.946 5.586 8.61 6 8.61C6.414 8.61 6.75 8.946 6.75 9.36L6.75 16.189L17.47 5.47C17.763 5.177 18.237 5.177 18.53 5.47C18.823 5.763 18.823 6.237 18.53 6.53L7.811 17.25L14.64 17.25C15.054 17.25 15.39 17.586 15.39 18Z" fill="black"/> },
+                ] as const).map(({ key, label, desc, icon }) => {
+                  const isSelected = callType === key;
+                  return (
+                    <button key={key} onClick={() => setCallType(key)} className={`w-full transition-colors border bg-transparent cursor-pointer rounded-3xl px-5 py-4 text-left ${isSelected ? "border-[#3655E8] bg-[#FAFAFA]" : "border-[#E4E4E7] hover:border-[#3655E8] hover:bg-[#FAFAFA]"}`}>
+                      <div className="flex justify-between items-start mb-3">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" className="ml-2">{icon}</svg>
+                        <div className={`flex items-center justify-center border transition-colors rounded-md w-5 h-5 flex-shrink-0 ${isSelected ? "bg-[#3655E8] border-[#3655E8]" : "bg-transparent border-[#E4E4E7]"}`}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path fillRule="evenodd" clipRule="evenodd" d="M19.409 3.143a.75.75 0 00-1.06.354L14.511 10.35 9.745 17.42a.54.54 0 01-.37.18c-.14 0-.262-.062-.37-.18L6.786 14.96a.75.75 0 10-1.06 1.34l2.25 2.538c.362.409 1.003.44 1.406.069a.74.74 0 00.162-.176l4.802-7.128 3.867-7.2a.75.75 0 00-.354-1.26z" fill={isSelected ? "white" : "transparent"}/></svg>
                         </div>
-                      )}
-                    </div>
-                    <p className="text-sm font-semibold text-gray-900 mb-1">{label}</p>
-                    <p className="text-xs text-gray-500 leading-relaxed">{desc}</p>
-                  </button>
-                ))}
+                      </div>
+                      <div className="flex flex-col gap-0.5">
+                        <h4 className="font-semibold text-base text-[#18181B]">{label}</h4>
+                        <p className="text-sm text-[#70707B] max-w-[85%]">{desc}</p>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
 
-              {/* Campaign Instructions */}
-              <button className="w-full border border-gray-200 rounded-xl px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-gray-500 shrink-0"><path fillRule="evenodd" clipRule="evenodd" d="M16.154 3.004C17.739 3.084 19 4.395 19 6V18C19 19.657 17.657 21 16 21H8C6.343 21 5 19.657 5 18V6C5 4.343 6.343 3 8 3H16L16.154 3.004ZM8 4.5C7.172 4.5 6.5 5.172 6.5 6V18C6.5 18.828 7.172 19.5 8 19.5H16C16.828 19.5 17.5 18.828 17.5 18V6C17.5 5.172 16.828 4.5 16 4.5H8Z" fill="currentColor"/><path d="M8.75 9H15.25M8.75 12H15.25M8.75 15H12.25" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                <span className="text-sm font-medium text-gray-700">Campaign Instructions</span>
-              </button>
+              {/* Group */}
+              <div className="relative w-full">
+                <div className="w-full inline-flex flex-col bg-transparent rounded-2xl outline outline-1 outline-offset-[-1px] outline-[rgba(0,0,0,0.1)] hover:outline-[rgba(0,0,0,0.2)] transition-all">
+                  <button onClick={() => { setGroupOpen(!groupOpen); setStatusOpen(false); setUseCaseOpen(false); }} className="h-14 px-4 py-2 flex items-center gap-2 cursor-pointer">
+                    <div className="flex-1 flex items-center justify-between">
+                      <span className="text-zinc-900 text-base font-normal">Group</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-neutral-500 text-base">{selectedGroup}</span>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ transform: groupOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 200ms ease-in-out" }}><path fillRule="evenodd" clipRule="evenodd" d="M3.70083 6.72323C3.37466 6.86581 3.2364 7.29113 3.40825 7.62366C3.55749 7.91246 9.65328 14.1052 9.8324 14.1499C9.92172 14.1722 10.0678 14.1722 10.1571 14.1499C10.3362 14.1052 16.432 7.91246 16.5812 7.62366C16.7261 7.34347 16.6887 7.10203 16.4651 6.87259C16.3067 6.71015 16.2166 6.66666 16.0385 6.66666C15.819 6.66666 15.7288 6.75254 12.9034 9.64918L9.99415 12.6318L7.11463 9.67783C4.60089 7.09919 4.20907 6.72038 4.03031 6.69628C3.91767 6.68113 3.76943 6.69325 3.70083 6.72323Z" fill="#737373"/></svg>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+                {groupOpen && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-[#E4E7E5] rounded-2xl shadow-lg z-20 overflow-hidden">
+                    {availableGroups.filter(g => g !== "Archived").map((g) => (
+                      <button key={g} onClick={() => { setSelectedGroup(g); setGroupOpen(false); }} className={`w-full px-4 py-3 text-sm text-left hover:bg-gray-50 ${selectedGroup === g ? "text-[#3655E8] font-medium" : "text-zinc-900"}`}>{g}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Status */}
+              <div className="relative w-full">
+                <div className="w-full inline-flex flex-col bg-transparent rounded-2xl outline outline-1 outline-offset-[-1px] outline-[rgba(0,0,0,0.1)] hover:outline-[rgba(0,0,0,0.2)] transition-all">
+                  <button onClick={() => { setStatusOpen(!statusOpen); setGroupOpen(false); setUseCaseOpen(false); }} className="h-14 px-4 py-2 flex items-center gap-2 cursor-pointer">
+                    <div className="flex-1 flex items-center justify-between">
+                      <span className="text-zinc-900 text-base font-normal">Status</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-neutral-500 text-base">{selectedStatus}</span>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ transform: statusOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 200ms ease-in-out" }}><path fillRule="evenodd" clipRule="evenodd" d="M3.70083 6.72323C3.37466 6.86581 3.2364 7.29113 3.40825 7.62366C3.55749 7.91246 9.65328 14.1052 9.8324 14.1499C9.92172 14.1722 10.0678 14.1722 10.1571 14.1499C10.3362 14.1052 16.432 7.91246 16.5812 7.62366C16.7261 7.34347 16.6887 7.10203 16.4651 6.87259C16.3067 6.71015 16.2166 6.66666 16.0385 6.66666C15.819 6.66666 15.7288 6.75254 12.9034 9.64918L9.99415 12.6318L7.11463 9.67783C4.60089 7.09919 4.20907 6.72038 4.03031 6.69628C3.91767 6.68113 3.76943 6.69325 3.70083 6.72323Z" fill="#737373"/></svg>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+                {statusOpen && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-[#E4E7E5] rounded-2xl shadow-lg z-20 overflow-hidden">
+                    {(["Active", "Paused", "Stopped"] as const).map((s) => (
+                      <button key={s} onClick={() => { setSelectedStatus(s); setStatusOpen(false); }} className={`w-full px-4 py-3 text-sm text-left hover:bg-gray-50 ${selectedStatus === s ? "text-[#3655E8] font-medium" : "text-zinc-900"}`}>{s}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="w-full h-px bg-[#E4E7E5]" />
+
+              {/* Campaign Instructions accordion */}
+              <section className="w-full border rounded-2xl p-4 hover:bg-[#FAFAFA] transition-colors">
+                <button type="button" onClick={() => setInstructionsOpen(!instructionsOpen)} className="w-full text-left flex items-center justify-between font-medium hover:bg-[#FAFAFA] transition-colors focus:outline-none">
+                  <div className="flex items-center gap-4">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path fillRule="evenodd" clipRule="evenodd" d="M20.5 6V12.544C21.0498 12.7964 21.5548 13.1293 22 13.5278V6C22 3.23858 19.7614 1 17 1H7C4.23858 1 2 3.23858 2 6V18C2 20.7614 4.23858 23 7 23H14.6822C14.0774 22.5978 13.5497 22.0889 13.126 21.5H7C5.067 21.5 3.5 19.933 3.5 18V6C3.5 4.067 5.067 2.5 7 2.5H17C18.933 2.5 20.5 4.067 20.5 6ZM18.75 15C18.75 14.5858 18.4142 14.25 18 14.25C17.5858 14.25 17.25 14.5858 17.25 15V17.5H14.75C14.3358 17.5 14 17.8358 14 18.25C14 18.6642 14.3358 19 14.75 19H17.25V21.5C17.25 21.9142 17.5858 22.25 18 22.25C18.4142 22.25 18.75 21.9142 18.75 21.5V19H21.25C21.6642 19 22 18.6642 22 18.25C22 17.8358 21.6642 17.5 21.25 17.5H18.75V15ZM7 6.25C6.58579 6.25 6.25 6.58579 6.25 7C6.25 7.41421 6.58579 7.75 7 7.75H17C17.4142 7.75 17.75 7.41421 17.75 7C17.75 6.58579 17.4142 6.25 17 6.25H7ZM6.25 11C6.25 10.5858 6.58579 10.25 7 10.25H17C17.4142 10.25 17.75 10.5858 17.75 11C17.75 11.4142 17.4142 11.75 17 11.75H7C6.58579 11.75 6.25 11.4142 6.25 11ZM7 14.25C6.58579 14.25 6.25 14.5858 6.25 15C6.25 15.4142 6.58579 15.75 7 15.75H13C13.4142 15.75 13.75 15.4142 13.75 15C13.75 14.5858 13.4142 14.25 13 14.25H7Z" fill="#707B73"/></svg>
+                    <span className="text-zinc-900 text-base font-normal">Campaign Instructions</span>
+                  </div>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ transform: instructionsOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 300ms ease-in-out" }}><path fillRule="evenodd" clipRule="evenodd" d="M3.70083 6.72323C3.37466 6.86581 3.2364 7.29113 3.40825 7.62366C3.55749 7.91246 9.65328 14.1052 9.8324 14.1499C9.92172 14.1722 10.0678 14.1722 10.1571 14.1499C10.3362 14.1052 16.432 7.91246 16.5812 7.62366C16.7261 7.34347 16.6887 7.10203 16.4651 6.87259C16.3067 6.71015 16.2166 6.66666 16.0385 6.66666C15.819 6.66666 15.7288 6.75254 12.9034 9.64918L9.99415 12.6318L7.11463 9.67783C4.60089 7.09919 4.20907 6.72038 4.03031 6.69628C3.91767 6.68113 3.76943 6.69325 3.70083 6.72323Z" fill="#70707B"/></svg>
+                </button>
+                {instructionsOpen && (
+                  <div className="flex flex-col gap-4 pt-4">
+                    <div className="relative w-full h-full">
+                      <textarea
+                        value={campaignInstructions}
+                        onChange={(e) => setCampaignInstructions(e.target.value)}
+                        placeholder=" "
+                        className="peer resize-none w-full block px-4 pb-2.5 pt-6 text-base text-black bg-[#00000005] appearance-none focus:outline-none hover:bg-[#0000000A] focus:bg-[#0000000A] caret-[#3655E8] rounded-2xl border border-[#00000014] hover:border-[#00000029] min-h-[100px]"
+                      />
+                      <label className="pointer-events-none transition-all text-[#00000066] text-base absolute left-4 top-[6px] translate-y-0 text-xs">Type instructions here</label>
+                    </div>
+                  </div>
+                )}
+              </section>
+
+              {/* Technical Settings accordion */}
+              <section className="w-full border rounded-2xl p-4 hover:bg-[#FAFAFA] transition-colors">
+                <button type="button" onClick={() => setTechSettingsOpen(!techSettingsOpen)} className="w-full text-left flex items-center justify-between font-medium focus:outline-none">
+                  <div className="flex items-center gap-4">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path fillRule="evenodd" clipRule="evenodd" d="M11.13 1.037C10.637 1.108 10.107 1.223 9.631 1.363L9.426 1.423L9.224 1.783C8.905 2.35 8.349 3.481 8.151 3.968C7.989 4.363 7.95 4.432 7.799 4.584C7.557 4.829 7.361 4.899 6.972 4.879C6.812 4.87 6.474 4.835 6.221 4.8C5.747 4.735 4.812 4.661 4.026 4.626L3.576 4.606L3.172 5C2.95 5.217 2.657 5.532 2.521 5.701C1.809 6.586 1.268 7.695 1.021 8.777C0.993 8.897 1.991 10.304 2.713 11.162C3.086 11.606 3.156 11.759 3.136 12.082C3.118 12.363 3.062 12.468 2.677 12.931C2.145 13.57 1.576 14.338 1.112 15.043L1 15.212L1.074 15.488C1.462 16.94 2.281 18.279 3.373 19.248L3.587 19.438L4.108 19.417C4.864 19.388 5.743 19.314 6.38 19.228C6.686 19.187 7.006 19.153 7.091 19.153C7.386 19.153 7.752 19.345 7.908 19.581C7.952 19.648 8.089 19.936 8.212 20.222C8.447 20.77 8.967 21.812 9.262 22.328L9.437 22.635L9.884 22.747C10.648 22.938 11.164 23 11.995 23C12.906 23 13.642 22.902 14.371 22.685L14.588 22.62L14.805 22.229C15.286 21.36 15.621 20.668 15.959 19.85C16.127 19.444 16.462 19.189 16.864 19.161C16.981 19.153 17.247 19.174 17.508 19.211C18.239 19.318 19.651 19.429 20.262 19.429H20.458L20.936 18.946C21.736 18.137 22.244 17.374 22.637 16.394C22.784 16.028 22.99 15.353 22.99 15.239C22.99 15.122 22.029 13.768 21.461 13.085C20.905 12.415 20.876 12.362 20.877 12.008C20.877 11.724 20.962 11.563 21.354 11.097C21.751 10.624 22.311 9.874 22.707 9.284L23 8.847L22.961 8.67C22.857 8.193 22.555 7.395 22.296 6.913C22.112 6.569 21.762 6.037 21.519 5.732C21.293 5.448 20.848 4.98 20.594 4.759L20.418 4.606L19.705 4.641C18.881 4.681 18.162 4.743 17.554 4.828C16.783 4.936 16.546 4.896 16.234 4.602C16.08 4.457 16.047 4.398 15.837 3.909C15.559 3.263 15.228 2.589 14.859 1.92L14.584 1.422L14.415 1.372C14.053 1.266 13.555 1.149 13.189 1.083C12.699 0.996 11.593 0.972 11.13 1.037ZM12 8C9.791 8 8 9.791 8 12C8 14.209 9.791 16 12 16C14.209 16 16 14.209 16 12C16 9.791 14.209 8 12 8ZM12 9.5C13.381 9.5 14.5 10.619 14.5 12C14.5 13.381 13.381 14.5 12 14.5C10.619 14.5 9.5 13.381 9.5 12C9.5 10.619 10.619 9.5 12 9.5Z" fill="#707B73"/></svg>
+                    <span className="text-[#181b18] text-base font-normal">Technical Settings</span>
+                  </div>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ transform: techSettingsOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 300ms ease-in-out" }}><path fillRule="evenodd" clipRule="evenodd" d="M3.70083 6.72323C3.37466 6.86581 3.2364 7.29113 3.40825 7.62366C3.55749 7.91246 9.65328 14.1052 9.8324 14.1499C9.92172 14.1722 10.0678 14.1722 10.1571 14.1499C10.3362 14.1052 16.432 7.91246 16.5812 7.62366C16.7261 7.34347 16.6887 7.10203 16.4651 6.87259C16.3067 6.71015 16.2166 6.66666 16.0385 6.66666C15.819 6.66666 15.7288 6.75254 12.9034 9.64918L9.99415 12.6318L7.11463 9.67783C4.60089 7.09919 4.20907 6.72038 4.03031 6.69628C3.91767 6.68113 3.76943 6.69325 3.70083 6.72323Z" fill="#70707B"/></svg>
+                </button>
+                {techSettingsOpen && (
+                  <div className="flex flex-col gap-4 pt-4">
+                    {([
+                      { key: "recordCalls", label: "Record Calls", desc: "", val: recordCalls, set: setRecordCalls },
+                      { key: "checkFederalDNC", label: "Check US Federal Do Not Call (DNC) Registry", desc: "Block calls to numbers listed on the US Federal Do Not Call registry. Test calls are excluded from this check.", val: checkFederalDNC, set: setCheckFederalDNC },
+                      { key: "enableLocalDNC", label: "Enable Account Do Not Call (DNC) List", desc: "Block calls to numbers on your account's own Do Not Call list.", val: enableLocalDNC, set: setEnableLocalDNC },
+                      { key: "continueAfterCallLater", label: "Continue Dialing Attempts after \"Call Later\"", desc: "After a successful call to the contact, if the call was classified as Call Later, dialing attempts will continue.", val: continueAfterCallLater, set: setContinueAfterCallLater },
+                      { key: "sensitiveContent", label: "Sensitive content restriction", desc: "Automatically detects sensitive data and hides the entire transcript from view. This ensures full PCI compliance.", val: sensitiveContent, set: setSensitiveContent },
+                      { key: "allowDuplicates", label: "Allow Duplicate Phone Numbers", desc: "Allow having multiple contacts with the same phone number.", val: allowDuplicates, set: setAllowDuplicates },
+                    ] as { key: string; label: string; desc: string; val: boolean; set: (v: boolean) => void }[]).map(({ key, label, desc, val, set }, i, arr) => (
+                      <div key={key}>
+                        <div className="w-full justify-between flex items-center gap-3">
+                          <div>
+                            <span className="text-zinc-900 text-base font-normal">{label}</span>
+                            {desc && <div className="text-neutral-500 text-sm mt-0.5">{desc}</div>}
+                          </div>
+                          <div className="relative inline-flex items-center shrink-0">
+                            <div onClick={() => set(!val)} className="relative w-[50px] h-7 flex items-center rounded-full transition-colors duration-300 cursor-pointer" style={{ backgroundColor: val ? "rgb(54,85,232)" : "rgb(244,245,244)" }}>
+                              <div className={`absolute w-6 h-6 bg-white rounded-full shadow-md transform transition-transform duration-300 ${val ? "translate-x-6" : "translate-x-0.5"}`} />
+                            </div>
+                          </div>
+                        </div>
+                        {i < arr.length - 1 && <div className="w-full h-px bg-[#E4E7E5] mt-4" />}
+                      </div>
+                    ))}
+                    <div className="w-full h-px bg-[#E4E7E5]" />
+                    <div className="text-zinc-900 text-base font-normal mb-1">Limit the duration of the call</div>
+                    <div className="relative w-full">
+                      <input type="number" min="1" max="30" value={maxDuration} onChange={(e) => setMaxDuration(e.target.value)} placeholder=" "
+                        className="peer h-auto w-full block pl-4 pb-2.5 pt-6 text-base text-black bg-[#00000005] focus:outline-none focus:ring-0 hover:bg-[#0000000A] caret-[#3655E8] rounded-2xl border border-[#00000014] hover:border-[#00000029] focus:border-[#3655E8] transition-colors"
+                      />
+                      <label className="absolute text-base font-normal text-[#00000066] duration-300 transform top-4 left-4 scale-75 -translate-y-3 pointer-events-none peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-3 peer-focus:text-[#3655E8]">Time In Minutes</label>
+                    </div>
+                  </div>
+                )}
+              </section>
+
             </div>
           </div>
         </div>
