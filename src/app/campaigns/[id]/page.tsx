@@ -341,109 +341,112 @@ export default function CampaignDetailPage() {
         </div>
       </div>
 
-      {/* Table + Side Panel flex layout */}
-      <div className="flex gap-4 items-start relative">
-        {/* Contacts table */}
-        <div className={`bg-[var(--bg-app)] rounded-xl border border-[var(--border)] overflow-hidden transition-all ${selectedContact ? "flex-1 min-w-0" : "w-full"}`}>
-          {/* Toolbar */}
-          <div className="flex items-center gap-3 p-4 border-b border-[var(--border)] bg-[var(--bg-card)]">
-            <div className="relative flex-1">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-3)]" />
-              <input type="text" placeholder="Search Contacts" value={searchQuery}
-                onChange={(e) => handleSearch(e.target.value)}
-                className="w-full pl-9 pr-10 py-2 text-sm bg-[var(--bg-app)] border border-[var(--border)] rounded-lg placeholder-[var(--text-3)] text-[var(--text-1)] focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all"
-              />
-              <Calendar size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-3)] cursor-pointer" />
-            </div>
-            <button onClick={() => exportToCSV(filtered, `${campaign.name}-contacts.csv`)}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium border border-[var(--border)] rounded-lg text-[var(--text-2)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-1)] transition-colors whitespace-nowrap shrink-0">
-              <Download size={13} /> Export contacts
-            </button>
+      {/* Contacts table (always full width) */}
+      <div className="bg-[var(--bg-app)] rounded-xl border border-[var(--border)] overflow-hidden w-full">
+        {/* Toolbar */}
+        <div className="flex items-center gap-3 p-4 border-b border-[var(--border)] bg-[var(--bg-card)]">
+          <div className="relative flex-1">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-3)]" />
+            <input type="text" placeholder="Search Contacts" value={searchQuery}
+              onChange={(e) => handleSearch(e.target.value)}
+              className="w-full pl-9 pr-10 py-2 text-sm bg-[var(--bg-app)] border border-[var(--border)] rounded-lg placeholder-[var(--text-3)] text-[var(--text-1)] focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all"
+            />
+            <Calendar size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-3)] cursor-pointer" />
           </div>
-
-          {/* Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[500px] text-sm">
-              <thead>
-                <tr className="border-b border-[var(--border)] bg-[var(--bg-card)]">
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-[var(--text-2)] uppercase tracking-wide whitespace-nowrap">Name &amp; Phone Number</th>
-                  <th className="text-right px-4 py-3 text-xs font-semibold text-[var(--text-2)] uppercase tracking-wide whitespace-nowrap">Attempts</th>
-                  {!selectedContact && <th className="text-right px-4 py-3 text-xs font-semibold text-[var(--text-2)] uppercase tracking-wide whitespace-nowrap">Last Attempt</th>}
-                  {!selectedContact && <th className="text-right px-4 py-3 text-xs font-semibold text-[var(--text-2)] uppercase tracking-wide whitespace-nowrap">Call Duration</th>}
-                  <th className="text-center px-4 py-3 text-xs font-semibold text-[var(--text-2)] uppercase tracking-wide">Status</th>
-                  {!selectedContact && <th className="px-4 py-3 text-xs font-semibold text-[var(--text-2)] uppercase tracking-wide">Events</th>}
-                  <th className="w-10" />
-                </tr>
-              </thead>
-              <tbody>
-                {paginated.length === 0 ? (
-                  <tr>
-                    <td colSpan={selectedContact ? 4 : 7} className="px-4 py-12 text-center text-sm text-[var(--text-3)]">
-                      {searchQuery ? "No contacts match your search." : "No contacts found for this campaign."}
-                    </td>
-                  </tr>
-                ) : paginated.map((contact, pageIdx) => {
-                  const globalIdx = (safePage - 1) * PAGE_SIZE + pageIdx;
-                  const isSelected = selectedContact?.id === contact.id;
-                  return (
-                    <tr key={contact.id}
-                      onClick={() => openContactPanel(globalIdx)}
-                      className={`group border-b border-[var(--border)] cursor-pointer transition-colors ${isSelected ? "bg-blue-50/50" : "hover:bg-[var(--bg-hover)]"} ${pageIdx === paginated.length - 1 ? "border-b-0" : ""}`}>
-                      <td className="px-4 py-3.5 min-w-[160px]">
-                        <p className="font-medium text-[var(--text-1)]">{contact.name}</p>
-                        <p className="text-xs text-[var(--text-3)] mt-0.5">{contact.phone}</p>
-                      </td>
-                      <td className="px-4 py-3.5 text-right text-[var(--text-2)]">{contact.attempts}</td>
-                      {!selectedContact && <td className="px-4 py-3.5 text-right text-[var(--text-2)] whitespace-nowrap">{contact.lastAttempt}</td>}
-                      {!selectedContact && <td className="px-4 py-3.5 text-right text-[var(--text-2)] whitespace-nowrap">{contact.callDuration}</td>}
-                      <td className="px-4 py-3.5 text-center"><ContactStatusBadge status={contact.status} /></td>
-                      {!selectedContact && <td className="px-4 py-3.5 text-[var(--text-3)] text-xs"></td>}
-                      <td className="px-2 py-3.5 text-center">
-                        <button onClick={(e) => { e.stopPropagation(); setDeleteContactId(contact.id); }}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 text-[var(--text-3)] hover:text-red-400 hover:bg-red-500/10 rounded-md"
-                          title="Remove contact">
-                          <Trash2 size={13} />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border)] bg-[var(--bg-card)]">
-              <p className="text-xs text-[var(--text-3)]">
-                Showing {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} of {filtered.length} contacts
-              </p>
-              <div className="flex items-center gap-1">
-                <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={safePage === 1}
-                  className="p-1.5 rounded-md text-[var(--text-3)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-1)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
-                  <ChevronLeft size={15} />
-                </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                  <button key={p} onClick={() => setCurrentPage(p)}
-                    className={`w-7 h-7 text-xs rounded-md font-medium transition-colors ${
-                      p === safePage ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" : "text-[var(--text-2)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-1)]"
-                    }`}>
-                    {p}
-                  </button>
-                ))}
-                <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={safePage === totalPages}
-                  className="p-1.5 rounded-md text-[var(--text-3)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-1)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
-                  <ChevronRight size={15} />
-                </button>
-              </div>
-            </div>
-          )}
+          <button onClick={() => exportToCSV(filtered, `${campaign.name}-contacts.csv`)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium border border-[var(--border)] rounded-lg text-[var(--text-2)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-1)] transition-colors whitespace-nowrap shrink-0">
+            <Download size={13} /> Export contacts
+          </button>
         </div>
 
-        {/* ── Contact side panel (mobile: full-screen overlay, desktop: side panel) ── */}
-        {selectedContact && (
-          <div className="fixed inset-0 z-40 md:static md:inset-auto md:z-auto md:w-[460px] md:shrink-0 bg-white md:border md:border-gray-200 md:rounded-xl md:shadow-lg overflow-hidden flex flex-col" style={{ maxHeight: "100dvh" }}>
+        {/* Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[500px] text-sm">
+            <thead>
+              <tr className="border-b border-[var(--border)] bg-[var(--bg-card)]">
+                <th className="text-left px-4 py-3 text-xs font-semibold text-[var(--text-2)] uppercase tracking-wide whitespace-nowrap">Name &amp; Phone Number</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-[var(--text-2)] uppercase tracking-wide whitespace-nowrap">Attempts</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-[var(--text-2)] uppercase tracking-wide whitespace-nowrap">Last Attempt</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-[var(--text-2)] uppercase tracking-wide whitespace-nowrap">Call Duration</th>
+                <th className="text-center px-4 py-3 text-xs font-semibold text-[var(--text-2)] uppercase tracking-wide">Status</th>
+                <th className="px-4 py-3 text-xs font-semibold text-[var(--text-2)] uppercase tracking-wide">Events</th>
+                <th className="w-10" />
+              </tr>
+            </thead>
+            <tbody>
+              {paginated.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-4 py-12 text-center text-sm text-[var(--text-3)]">
+                    {searchQuery ? "No contacts match your search." : "No contacts found for this campaign."}
+                  </td>
+                </tr>
+              ) : paginated.map((contact, pageIdx) => {
+                const globalIdx = (safePage - 1) * PAGE_SIZE + pageIdx;
+                const isSelected = selectedContact?.id === contact.id;
+                return (
+                  <tr key={contact.id}
+                    onClick={() => openContactPanel(globalIdx)}
+                    className={`group border-b border-[var(--border)] cursor-pointer transition-colors ${isSelected ? "bg-blue-50/50" : "hover:bg-[var(--bg-hover)]"} ${pageIdx === paginated.length - 1 ? "border-b-0" : ""}`}>
+                    <td className="px-4 py-3.5 min-w-[160px]">
+                      <p className="font-medium text-[var(--text-1)]">{contact.name}</p>
+                      <p className="text-xs text-[var(--text-3)] mt-0.5">{contact.phone}</p>
+                    </td>
+                    <td className="px-4 py-3.5 text-right text-[var(--text-2)]">{contact.attempts}</td>
+                    <td className="px-4 py-3.5 text-right text-[var(--text-2)] whitespace-nowrap">{contact.lastAttempt}</td>
+                    <td className="px-4 py-3.5 text-right text-[var(--text-2)] whitespace-nowrap">{contact.callDuration}</td>
+                    <td className="px-4 py-3.5 text-center"><ContactStatusBadge status={contact.status} /></td>
+                    <td className="px-4 py-3.5 text-[var(--text-3)] text-xs"></td>
+                    <td className="px-2 py-3.5 text-center">
+                      <button onClick={(e) => { e.stopPropagation(); setDeleteContactId(contact.id); }}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 text-[var(--text-3)] hover:text-red-400 hover:bg-red-500/10 rounded-md"
+                        title="Remove contact">
+                        <Trash2 size={13} />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
 
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border)] bg-[var(--bg-card)]">
+            <p className="text-xs text-[var(--text-3)]">
+              Showing {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} of {filtered.length} contacts
+            </p>
+            <div className="flex items-center gap-1">
+              <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={safePage === 1}
+                className="p-1.5 rounded-md text-[var(--text-3)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-1)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                <ChevronLeft size={15} />
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                <button key={p} onClick={() => setCurrentPage(p)}
+                  className={`w-7 h-7 text-xs rounded-md font-medium transition-colors ${
+                    p === safePage ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" : "text-[var(--text-2)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-1)]"
+                  }`}>
+                  {p}
+                </button>
+              ))}
+              <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={safePage === totalPages}
+                className="p-1.5 rounded-md text-[var(--text-3)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-1)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                <ChevronRight size={15} />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Contact side panel — fixed right drawer with slide animation ── */}
+      {/* Backdrop */}
+      <div
+        onClick={closeContactPanel}
+        className={`fixed inset-0 z-40 bg-black/20 transition-opacity duration-300 ${selectedContact ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
+      />
+      {/* Drawer */}
+      <div className={`fixed top-0 right-0 h-screen z-50 w-full sm:w-[460px] bg-white shadow-2xl flex flex-col transform transition-transform duration-300 ease-in-out ${selectedContact ? "translate-x-0" : "translate-x-full"}`} style={{ willChange: "transform" }}>
+      {selectedContact && (<>
             {/* Previous / Next nav */}
             <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
               <button
@@ -601,9 +604,8 @@ export default function CampaignDetailPage() {
                 </div>
               )}
             </div>
+      </>)}
           </div>
-        )}
-      </div>
 
       {/* Edit Campaign Modal */}
       {showEdit && (
